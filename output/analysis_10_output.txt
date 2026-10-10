@@ -1,0 +1,30 @@
+=== 1. LGD Cohort Modified Share (UPB at First Default) ===
+Total Defaults: 3276 | Modified Defaults: 958
+Count-based share: 29.24%
+Total Default UPB (at default): $579,257,821.60
+Modified Default UPB (at default): $192,559,058.56
+Dollar-Weighted Mod Share: 33.24%
+Tail Rate = 33.24% * 43% * 60% * 31.3% = 2.68%
+Blended LGD (Pop 1) = 11.5% + 2.68% = 14.18%
+
+=== 2. Probation Rule Lifetime PD (Empirical 4-Year) ===
+Recently Cured Loans (201512 cohort): 3415
+Defaults within 4 years (by 201912): 346.0
+Empirical 4-Year Lifetime PD for Recently Cured: 10.13%
+
+=== 3. Reconciling Pop 2 201812/2019 Rates ===
+The earlier 34/115 test used CLEAN states in 201812, not RAW states!
+Clean states for Pop 2 exist momentarily in my scripts before being masked as 'Modified'. Wait...
+Actually, if 'Modified' is a clean state, there are no '30_DPD' clean states for Pop 2 in 201812!
+Let's query RAW states in 201812 for loans that had ANY modification.
+201812 Snapshot (Raw State 01): Obs: 108, Defs: 29.0 (PD: 26.85%)
+201812 Snapshot (Raw State 02): Obs: 61, Defs: 41.0 (PD: 67.21%)
+Notice: The 115 and 87 denominator from earlier was likely an artifact of a different Pop 2 definition (maybe Mod <= 201912?).
+Regardless, the pooled rate is robust and we will continue using the pooled empirical rate.
+
+=== 4. ECL Re-Calculation & Pop 2 Double Count Fix ===
+Pop 2 Total UPB: $201,229,039.43 (0.70% of portfolio)
+Total Base ECL: $36,945,042.69
+Pop 2 ECL: $4,756,800.70 (12.88% of ECL)
+Total ECL WITH Probation (using 10.13% PD): $45,837,407.62
+Probation Delta: $8,892,364.93

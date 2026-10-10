@@ -1,0 +1,7 @@
+=== Positive Case (sample_orig_2014.txt) ===
+loan_id: F14Q10000011, loan_term (field after): 180
+Positive assertions PASSED.
+
+=== Negative Case (Constructed shifting error) ===
+Shifted loan_id: N, Shifted loan_term: 2
+Negative assertions CORRECTLY FAILED: AssertionError caught due to mid-row shift.
