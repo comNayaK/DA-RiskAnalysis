@@ -1,0 +1,27 @@
+--- 1. 36m LGD Cohort Mod Share ---
+Total Defaults (<=201612): 3276
+Modified Defaults (mod <=202002): 958
+Modified Share: 29.24%
+Tail Amount (UPB * 0.292 * 0.6 * 0.313): $11,050,033.90
+
+--- 2. Probation Rule Overlap with Pop 2 ---
+ recent_delq  count  mod_overlap
+           0 166392          0.0
+           1   4606          0.0
+
+--- 3. Pop 2 Delinquent 12m Backtest (vs 29.6% and 66.7%) ---
+raw_delq  obs  defs  pd_12m
+      01  196 102.0 52.0408
+      02  190 147.0 77.3684
+
+--- 4. Clean vs Recent Delq 2015-2019 (Ex-Hurricane) ---
+Year 2015 | Clean 12m    | Obs:  182830 | Defs:   390 | PD: 0.213%
+Year 2015 | Recent Delq  | Obs:    2650 | Defs:    98 | PD: 3.698%
+Year 2016 | Clean 12m    | Obs:  210177 | Defs:   351 | PD: 0.167%
+Year 2016 | Recent Delq  | Obs:    3415 | Defs:   118 | PD: 3.455%
+Year 2017 | Clean 12m    | Obs:  200417 | Defs:   330 | PD: 0.165%
+Year 2017 | Recent Delq  | Obs:    3384 | Defs:   116 | PD: 3.428%
+Year 2018 | Clean 12m    | Obs:  207061 | Defs:   323 | PD: 0.156%
+Year 2018 | Recent Delq  | Obs:    4405 | Defs:   142 | PD: 3.224%
+Year 2019 | Clean 12m    | Obs:  187858 | Defs:   236 | PD: 0.126%
+Year 2019 | Recent Delq  | Obs:    4254 | Defs:   159 | PD: 3.738%

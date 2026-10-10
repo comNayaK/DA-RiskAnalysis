@@ -33,12 +33,16 @@ def audit_files(orig_pattern: str, svcg_pattern: str):
     print(f"[Audit] Origination columns detected: {orig_cols} (Sample file: {os.path.basename(sample_orig)})")
     print(f"[Audit] Performance columns detected: {svcg_cols} (Sample file: {os.path.basename(sample_svcg)})")
     
-    # Check loan ID format (field 20 for origination)
-    loan_id_sample = subprocess.check_output(f"head -1 '{sample_orig}' | awk -F'|' '{{print $20}}'", shell=True).decode().strip()
+    # Check loan ID format (field 20 for origination) and fields after
+    orig_sample_line = subprocess.check_output(f"head -1 '{sample_orig}'", shell=True).decode().strip().split('|')
+    loan_id_sample = orig_sample_line[19]
+    prop_state = orig_sample_line[20]
+    
     print(f"[Audit] Sample Loan ID: {loan_id_sample} -> Orig Year: 2000 + {loan_id_sample[1:3]} = {2000 + int(loan_id_sample[1:3])}")
     
     # Assertions
     assert len(loan_id_sample) == 12 and loan_id_sample.startswith('F'), f"Invalid loan_id pattern: {loan_id_sample}"
+    assert len(prop_state) == 2 and prop_state.isalpha(), f"Invalid property state: {prop_state}"
     
     perf_sample_line = subprocess.check_output(f"head -1 '{sample_svcg}'", shell=True).decode().strip().split('|')
     reporting_period = perf_sample_line[1]

@@ -1,0 +1,14 @@
+# Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Database & Data files
+*.duckdb
+*.duckdb.wal
+data/*.txt
+data/*.csv
+
+# Output
+output/*
+!output/.gitkeep

@@ -7,20 +7,19 @@ The raw data ingestion utilizes dynamic schema padding/truncation rather than a 
 *   **Sample Origination File (`sample_orig_2014.txt`)**: Contains 31 fields. The `ORIG_COLUMNS_32` mapping in `src/config.py` contains 32 fields. 
 *   **Sample Performance File (`sample_perf_2014.txt`)**: Contains 35 fields. The `PERF_COLUMNS_32` mapping contains 32 fields.
 *   **Ingestion Logic (`src/ingestion.py`)**: The system dynamically appends `extra_orig_col_N` or truncates the dictionary to match the detected `awk -F'|' '{print NF}'` field counts prior to DuckDB insertion.
-*   **Content Assertions Added**: The ingestion pipeline strictly asserts the 12-digit `F`-prefixed `loan_id` pattern, 6-digit `monthly_reporting_period`, constrained `modification_flag` values (`Y`, `P`, `N`, blank), valid `zero_balance_code` sets, and numeric structure for loss calculation columns. (Negative testing confirms that invalid variants trigger explicit `AssertionError` exceptions on raw tables).
+*   **Content Assertions Added**: The ingestion pipeline strictly asserts the 12-digit `F`-prefixed `loan_id` pattern and trailing fields (e.g., `property_state`), 6-digit `monthly_reporting_period`, constrained `modification_flag` values (`Y`, `P`, `N`, blank), valid `zero_balance_code` sets, and numeric structure for loss calculation columns. (Negative testing confirms that invalid variants trigger explicit `AssertionError` exceptions on raw tables).
 
 ## 2. Layer 1 Modification Policy & Population Counts
 The model **censors** (rather than purges) modified loans in Layer 1. 
 *   **1,956** is the precise count of unique loans censored in Layer 1 (having hit the 'Modified' state strictly before the 202002 cutoff).
 
-**The 2,096 Double Count (LGD Re-default Tail Error)**:
-An earlier LGD run evaluated 2,096 modified-defaulted loans (out of 6,023 total defaults) to assert a "34.8% share" of defaults involving modifications, driving a 2.61% LGD tail add-on. Splitting these 2,096 loans reveals a fundamental timeline flaw:
-*   Modifications occurring *after* first default: **1,843**
-*   Modifications occurring *before* first default: **14**
-*   Modifications occurring *in the same month*: **2**
-*   Post-cutoff (>202002) modifications: **237**
+**The Re-default Tail & 36m LGD Cohort Mod Share**:
+Based on the 36-month LGD cohort (loans where first default $\le 201612$):
+*   Total Defaults: **3,276**
+*   Modified Defaults (modified $\le 202002$): **958**
+*   **Modified Share**: **29.24%**
 
-The overwhelming majority of these loans (1,843) defaulted *first* as standard performing loans and subsequently received a modification as a loss mitigation strategy. Because the LGD matrix naturally captures post-default loss mitigation in standard severity calculations, adding a generic 2.61% "tail" for modified re-defaults double-counts these outcomes. True mod-before-default re-defaults constituted just 16 loans.
+Using this empirical 29.2% share applied against the total Modified UPB ($201.2M), with a 60% probability of liquidation upon re-default and 31.3% severity, the precise absolute **LGD Tail Add-on** evaluates to **\$11.05M**. (Earlier runs erroneously treated this as a flat 2.6% scalar added to the base rate based on an invalid 34.8% share).
 
 ## 3. Vintage Scope & Backtest Directionality
 *   **Multi-Vintage Scale**: The model evaluates 7 vintages (2010–2016), covering ~350,000 loans. The underlying `loan_level_transitions` table confirms ~50,000 loans per origination year spanning 2010 to 2016.
@@ -42,35 +41,39 @@ A fixed-LGD bootstrap was executed to isolate transition matrix uncertainty.
 *   **Resulting Band**: **\$31.36M — \$32.04M**. 
 *   *Note: This isolates matrix sampling error only and is separate from the headline ECL.*
 
-## 6. LGD Basis Derivation & Headline ECL
-**LGD Basis Definitions**:
-*   **11.5%**: The 36m follow-up *Censor Lower Bound* (purely $P(\text{Liquidation | 90+}) \times \text{Severity}$).
-*   **13.6%**: The 36m follow-up *Censor Upper Bound*.
-*   **16.7%**: The 36m follow-up *Purge Lower Bound*.
-*   *(The 12.57% bootstrap input was a raw midpoint devoid of strict exclude-modified logic, and the previously referenced 2.61% tail add-on is mathematically flawed as detailed in Section 2).*
-
-**Headline ECL Calculation (Corrected)**:
-The total portfolio exposure is **\$28.7B**. The Pop 2 (Modified) delinquent PDs have been corrected in the headline to reflect true raw states ($PD_{30} = 73.4\%$, $PD_{60} = 84.5\%$).
-*   **Headline ECL (0.218% Stage 1)**: **\$38.76M** (Using the 14.1% LGD).
-*   **Sensitivity ECL (0.178% Stage 1)**: **\$37.17M**.
-*   *Note*: Shifting to the 11.5% Censor floor removes ~$7M, dropping the ECL baseline to ~\$31.5M.
-
-## 7. Pop 2 Reconciliation & All-Population Z-Score
-The previously reported fluctuating Pop 2 counts were the artifact of an un-bounded event table mixing post-cutoff cures with active snapshot loans.
-*   **True Active Pop 2 (201912)**: 1,964 loans.
-*   **True Pop 2 Defaults**: 266 (147 non-modified delinquencies + 119 modified).
-*   **Corrected All-Population Z-Score**: $Obs = 194,925$, $Act = 912$, $Exp = 895.5 \Rightarrow Z = +0.55$.
-*   *Note*: A Green Z-score (+0.55) artificially balances out major sub-population failures (Pop 1 sits at $\approx -1.65\sigma$ while Pop 2 delinquent is heavily understated).
-
-## 8. Known Issues: The Stage 1 Over-prediction
-The memoryless matrix structure artificially elevates 12m PD for clean loans by averaging in loans with recent delinquencies. **Hypothesis Tested (2015–2019)**:
+## 6. The Stage 1 Over-prediction & Proposed Probation Rule
+The memoryless matrix structure artificially elevates 12m PD for clean loans by averaging in loans with recent delinquencies. **Hypothesis Tested (2015–2019, Ex-Hurricane)**:
 *   **2015**: Clean: 0.213% | Recent Delq: 3.698%
 *   **2016**: Clean: 0.167% | Recent Delq: 3.455%
-*   **2017**: Clean: 0.305% | Recent Delq: 3.925%
+*   **2017**: Clean: 0.165% | Recent Delq: 3.428%
 *   **2018**: Clean: 0.156% | Recent Delq: 3.224%
 *   **2019**: Clean: 0.126% | Recent Delq: 3.738%
 
-**Proposed Probation Rule**: Imposing a 12-month Stage 2 probation period for any loan with a recent delinquency shifts 4,606 loans (\$742.8M UPB) into Stage 2. Under this rule, the ECL for the Current cohort alone expands drastically to **\$19.69M** (up from ~$7M under standard averaging), heavily isolating risk in the recently cured population.
+**Proposed Probation Rule**: 
+Imposing a 12-month Stage 2 probation period for any loan with a recent delinquency shifts 4,606 loans (\$742.8M UPB) into Stage 2. These 4,606 loans have **zero overlap** with Pop 2. 
+Applying the Stage 2 Lifetime PD (**12.24%**) to this cohort is justified because this lifetime metric accurately integrates the ~3.5% annualized short-term PD over the remaining weighted average life ($1 - (1 - 0.035)^{3.5} \approx 11.7\%$). Under this rule, the ECL for the Current cohort alone expands to **\$19.69M**.
+
+## 7. Pop 2 Reconciliation & Delinquent Backtest
+*   **True Active Pop 2 (201912)**: 1,964 loans.
+*   **Pop 2 Delinquent Backtest**: Measuring 12m direct PD on the 201712 active modified cohort proves they default significantly faster than Pop 1 expectations. 
+    *   **30 DPD**: 52.0% actual (vs 29.6% Pop 1 matrix PD).
+    *   **60 DPD**: 77.4% actual (vs 66.7% Pop 1 matrix PD).
+
+## 8. Headline ECL Calculation (11.5% Base LGD)
+The model adopts a single, unified LGD basis (the 11.5% Censor Lower bound) across all stages, applying the recomputed absolute Mod Re-default Tail addition purely at the portfolio level.
+*   *Headline 12m PD for Stage 1: 0.218%*
+
+| Segment | UPB | Lifetime PD | LGD Base | ECL |
+|---|---|---|---|---|
+| Pop 1 Stage 1 | $28,137,473,427 | 0.218% | 11.5% | $7,054,065 |
+| Pop 1 Stage 2 (30 DPD) | $208,914,436 | 12.24% | 11.5% | $2,940,680 |
+| Pop 1 Stage 2 (60 DPD) | $43,259,255 | 52.59% | 11.5% | $2,616,255 |
+| Pop 2 Current | $164,566,546 | 12.24% | 11.5% | $2,316,439 |
+| Pop 2 30 DPD | $28,304,669 | 73.38% | 11.5% | $2,388,546 |
+| Pop 2 60 DPD | $8,357,824 | 84.50% | 11.5% | $812,172 |
+| Pop 3 (Default) | $117,265,323 | 100.0% | 11.5% | $13,485,512 |
+| Mod Re-default Tail | - | - | - | $11,050,034 |
+| **Total** | **$28,708,141,480** | | | **$42,663,702** |
 
 ---
 *Missing Data Note: The 2014Q1 raw files have been deleted and remain unrecovered.*
