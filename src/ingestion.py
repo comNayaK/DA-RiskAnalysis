@@ -37,6 +37,21 @@ def audit_files(orig_pattern: str, svcg_pattern: str):
     loan_id_sample = subprocess.check_output(f"head -1 '{sample_orig}' | awk -F'|' '{{print $20}}'", shell=True).decode().strip()
     print(f"[Audit] Sample Loan ID: {loan_id_sample} -> Orig Year: 2000 + {loan_id_sample[1:3]} = {2000 + int(loan_id_sample[1:3])}")
     
+    # Assertions
+    assert len(loan_id_sample) == 12 and loan_id_sample.startswith('F'), f"Invalid loan_id pattern: {loan_id_sample}"
+    
+    perf_sample_line = subprocess.check_output(f"head -1 '{sample_svcg}'", shell=True).decode().strip().split('|')
+    reporting_period = perf_sample_line[1]
+    mod_flag = perf_sample_line[7]
+    zero_balance = perf_sample_line[8]
+    actual_loss = perf_sample_line[21]
+    
+    assert len(reporting_period) == 6 and reporting_period.isdigit(), f"Invalid reporting period: {reporting_period}"
+    assert mod_flag in ['Y', 'P', 'N', ''], f"Invalid modification flag: {mod_flag}"
+    assert zero_balance in ['01', '02', '03', '06', '09', '15', '16', '96', ''], f"Invalid zero_balance_code: {zero_balance}"
+    if actual_loss:
+        assert actual_loss.replace('.','',1).lstrip('-').isdigit(), "actual_loss_calculation must be numeric"
+    
     return orig_cols, svcg_cols
 
 def ingest_raw_data(con: duckdb.DuckDBPyConnection, orig_path: str, svcg_path: str, orig_cols: int, svcg_cols: int):

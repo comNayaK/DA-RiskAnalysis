@@ -64,10 +64,11 @@ def build_fast_loan_tensor(con: duckdb.DuckDBPyConnection):
     loan_to_idx = {l_id: idx for idx, l_id in enumerate(unique_loans)}
     loan_agg_df['k'] = loan_agg_df['loan_id'].map(loan_to_idx)
 
+    loan_agg_df = loan_agg_df.dropna(subset=['i', 'j', 'k'])
     n_loans = len(unique_loans)
     print(f"[Diagnostics] Constructing 3D tensor for {n_loans:,} unique loans...")
     C_loan_counts = np.zeros((n_loans, 3, 5), dtype=float)
-    C_loan_counts[loan_agg_df['k'].values, loan_agg_df['i'].values, loan_agg_df['j'].values] = loan_agg_df['n'].values
+    C_loan_counts[loan_agg_df['k'].astype(int).values, loan_agg_df['i'].astype(int).values, loan_agg_df['j'].astype(int).values] = loan_agg_df['n'].values
 
     return C_loan_counts, unique_loans
 
