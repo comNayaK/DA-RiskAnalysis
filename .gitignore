@@ -1,4 +1,7 @@
-.DS_Store
+.venv/
+*.duckdb
+__pycache__/
+*.pyc
 data/
 output/*
 !output/*.txt
