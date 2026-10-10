@@ -1,0 +1,75 @@
+======================================================================
+   Residential Mortgage Credit Risk Engine (Phases 1–3)
+   Barclays / JPMC / StanChart GCC Portfolio Provisioning
+======================================================================
+[Setup] Skipping raw ingestion (using existing database tables).
+[Layer 1] Building clean_monthly_performance...
+[Layer 1] clean_monthly_performance created: 11,131,481 rows.
+[Verification] loan_state distribution: [('60_DPD', 16571), ('Paid_Off', 119652), ('Default', 38758), ('Current', 10878390), ('30_DPD', 77722), ('Admin_Removal', 388)]
+[Layer 2] Building truncated_performance...
+[Layer 2] truncated_performance created: 11,065,965 rows.
+[Verification] Post-default rows in truncated_performance: 0
+[Layer 3] Building loan_level_transitions...
+[Layer 3] loan_level_transitions created: 10,844,113 rows.
+[Vintages] Building vintage curve views...
+[Vintages] v_vintage_curves view created successfully.
+[Snapshot] Building ecl_snapshot at period 201912...
+[Snapshot] ecl_snapshot created: 101,292 active loans.
+[Verification] Snapshot loan count at 201912: 101292
+[LGD] Creating LGD cohort views...
+
+--- [LGD Cohort Analysis: 24-Month Follow-Up Window] ---
+     outcome_24m  count
+    Cured_Active   1518
+      Liquidated    661
+        Paid_Off    554
+   Admin_Removed     59
+Still_In_Default    325
+P(Liquidation | 90+): Lower = 0.2121, Upper = 0.3224
+Empirical Loss Severity: 0.2915
+LGD Sensitivity Range: [0.0618, 0.0940] | Midpoint: 0.0779
+[Markov] Creating transition views...
+
+--- [FICO-Segmented Absorbing PD Parameters] ---
+[High-FICO ] 12m PD (Current): 0.0016 | Lifetime PD (Current): 0.0153 | 30 DPD: 0.1143 | 60 DPD: 0.5721
+[Mid-FICO  ] 12m PD (Current): 0.0046 | Lifetime PD (Current): 0.0471 | 30 DPD: 0.1480 | 60 DPD: 0.5546
+[Lower-FICO] 12m PD (Current): 0.0108 | Lifetime PD (Current): 0.1337 | 30 DPD: 0.2229 | 60 DPD: 0.5586
+
+--- [Portfolio Provisioning Summary by FICO Band] ---
+            Loan_Count     Total_UPB     Total_ECL  Weighted_Avg_PD  Coverage_Rate_Pct
+fico_band                                                                             
+High-FICO        58992  8.488770e+09  3.136479e+06         0.004743           0.036949
+Lower-FICO       13387  1.751643e+09  5.050841e+06         0.037014           0.288349
+Mid-FICO         28870  4.242026e+09  4.881017e+06         0.014770           0.115063
+Unknown             43  3.494235e+06  9.861598e+02         0.003623           0.028222
+
+--- [Monotonicity Diagnostics across FICO Tiers] ---
+[Current   ] Lifetime PD: High=0.0153, Mid=0.0471, Lower=0.1337 -> PASSED [High <= Mid <= Lower]
+[30_DPD    ] Lifetime PD: High=0.1143, Mid=0.1480, Lower=0.2229 -> PASSED [High <= Mid <= Lower]
+[60_DPD    ] Lifetime PD: High=0.5721, Mid=0.5546, Lower=0.5586 -> VIOLATED (Inspect cell counts / sample bias)
+[Diagnostics] Aggregating loan transitions in DuckDB for 3D tensor...
+[Diagnostics] Constructing 3D tensor for 221,745 unique loans...
+
+[Bootstrap] Running 500 multinomial bootstrap draws for ECL matrix uncertainty...
+[Bootstrap] Note: Incorporating LGD [lower, upper] via uniform draw as a sensitivity assumption.
+
+--- [ECL Snapshot by LGD Bound and Stage] ---
+[Stage 1 (Current)   ] UPB: $14,220,820,669 | ECL Mid: $4,013,468 (0.03%) | Range: [$3,184,712, $4,842,224]
+[Stage 2 (30-60 DPD) ] UPB: $192,371,915 | ECL Mid: $3,027,427 (1.57%) | Range: [$2,402,282, $3,652,572]
+[Stage 3 (Default)   ] UPB: $72,740,687 | ECL Mid: $5,666,701 (7.79%) | Range: [$4,496,562, $6,836,840]
+
+[Bootstrap Result] 95% ECL Range (Matrix Uncertainty + LGD Sensitivity):
+                     [$10,219,790.68 - $15,212,599.02] (0.07% - 0.11% of UPB) | Median: $12,669,785.82 (0.09% of UPB)
+
+========================================================
+   Section 8: Out-of-Sample Model Backtest (2018 -> 2019)
+========================================================
+[OOS Model] Estimated 12-Month PD from <= 201812 data: 0.003663
+[OOS Snapshot] Stage 1 (Current) loans at 201812: 113,796
+[OOS Prediction] Expected 2019 Defaults: 416.85 (0.366%)
+[OOS Realized] Actual 2019 Defaults: 351 (0.308%)
+[OOS Backtest Result] Absolute Diff: +65.85 loans | Prediction Error: +18.76%
+
+======================================================================
+   Execution Successfully Completed in 13.94 seconds.
+======================================================================
