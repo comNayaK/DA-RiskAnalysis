@@ -1,0 +1,93 @@
+
+==============================================
+   RUNNING SCENARIO: Purge (Baseline)
+==============================================
+[Layer 1] Building clean_monthly_performance (Policy: purge)...
+[Layer 1] clean_monthly_performance created: 11,006,690 rows.
+[Layer 2] Building truncated_performance...
+[Layer 2] truncated_performance created: 10,958,383 rows.
+[Layer 3] Building loan_level_transitions...
+[Layer 3] loan_level_transitions created: 10,738,794 rows.
+[Snapshot] Building ecl_snapshot at period 201912...
+[Snapshot] ecl_snapshot created: 100,405 active loans.
+[LGD] Creating LGD cohort views...
+Using standard LGD (purge/censor): 0.1299
+[Markov] Creating transition views...
+
+--- [FICO-Segmented Absorbing PD Parameters] ---
+[High-FICO ] 12m PD (Current): 0.0012 | Lifetime PD (Current): 0.0115 | 30 DPD: 0.0907 | 60 DPD: 0.5324
+[Mid-FICO  ] 12m PD (Current): 0.0031 | Lifetime PD (Current): 0.0313 | 30 DPD: 0.1061 | 60 DPD: 0.4914
+[Lower-FICO] 12m PD (Current): 0.0068 | Lifetime PD (Current): 0.0841 | 30 DPD: 0.1489 | 60 DPD: 0.4722
+
+--- [Portfolio Provisioning Summary by FICO Band] ---
+            Loan_Count     Total_UPB     Total_ECL  Weighted_Avg_PD  Coverage_Rate_Pct
+fico_band                                                                             
+High-FICO        58762  8.448507e+09  4.010316e+06         0.003655           0.047468
+Lower-FICO       13069  1.700724e+09  5.048562e+06         0.022854           0.296848
+Mid-FICO         28531  4.182806e+09  5.650343e+06         0.010400           0.135085
+Unknown             43  3.494235e+06  1.101129e+03         0.002426           0.031513
+
+ECL Summary Computed.
+Total Portfolio ECL (Point Estimate): $14,710,322.33
+
+==============================================
+   RUNNING SCENARIO: Censor (Modified Included in denom)
+==============================================
+[Layer 1] Building clean_monthly_performance (Policy: censor)...
+[Layer 1] clean_monthly_performance created: 11,131,481 rows.
+[Layer 2] Building truncated_performance...
+[Layer 2] truncated_performance created: 11,065,965 rows.
+[Layer 3] Building loan_level_transitions...
+[Layer 3] loan_level_transitions created: 10,844,113 rows.
+[Snapshot] Building ecl_snapshot at period 201912...
+[Snapshot] ecl_snapshot created: 101,292 active loans.
+[LGD] Creating LGD cohort views...
+Using standard LGD (purge/censor): 0.0796
+[Markov] Creating transition views...
+
+--- [FICO-Segmented Absorbing PD Parameters] ---
+[High-FICO ] 12m PD (Current): 0.0016 | Lifetime PD (Current): 0.0153 | 30 DPD: 0.1143 | 60 DPD: 0.5721
+[Mid-FICO  ] 12m PD (Current): 0.0046 | Lifetime PD (Current): 0.0471 | 30 DPD: 0.1480 | 60 DPD: 0.5546
+[Lower-FICO] 12m PD (Current): 0.0108 | Lifetime PD (Current): 0.1337 | 30 DPD: 0.2229 | 60 DPD: 0.5586
+
+--- [Portfolio Provisioning Summary by FICO Band] ---
+            Loan_Count     Total_UPB     Total_ECL  Weighted_Avg_PD  Coverage_Rate_Pct
+fico_band                                                                             
+High-FICO        58992  8.488770e+09  3.205116e+06         0.004743           0.037757
+Lower-FICO       13387  1.751643e+09  5.161371e+06         0.037014           0.294659
+Mid-FICO         28870  4.242026e+09  4.987832e+06         0.014770           0.117581
+Unknown             43  3.494235e+06  1.007740e+03         0.003623           0.028840
+
+ECL Summary Computed.
+Total Portfolio ECL (Point Estimate): $13,355,326.89
+
+==============================================
+   RUNNING SCENARIO: Censor (Exclude-Modified)
+==============================================
+[Layer 1] Building clean_monthly_performance (Policy: censor)...
+[Layer 1] clean_monthly_performance created: 11,131,481 rows.
+[Layer 2] Building truncated_performance...
+[Layer 2] truncated_performance created: 11,065,965 rows.
+[Layer 3] Building loan_level_transitions...
+[Layer 3] loan_level_transitions created: 10,844,113 rows.
+[Snapshot] Building ecl_snapshot at period 201912...
+[Snapshot] ecl_snapshot created: 101,292 active loans.
+[LGD] Creating LGD cohort views...
+Using exclude-Modified LGD: 0.1239
+[Markov] Creating transition views...
+
+--- [FICO-Segmented Absorbing PD Parameters] ---
+[High-FICO ] 12m PD (Current): 0.0016 | Lifetime PD (Current): 0.0153 | 30 DPD: 0.1143 | 60 DPD: 0.5721
+[Mid-FICO  ] 12m PD (Current): 0.0046 | Lifetime PD (Current): 0.0471 | 30 DPD: 0.1480 | 60 DPD: 0.5546
+[Lower-FICO] 12m PD (Current): 0.0108 | Lifetime PD (Current): 0.1337 | 30 DPD: 0.2229 | 60 DPD: 0.5586
+
+--- [Portfolio Provisioning Summary by FICO Band] ---
+            Loan_Count     Total_UPB     Total_ECL  Weighted_Avg_PD  Coverage_Rate_Pct
+fico_band                                                                             
+High-FICO        58992  8.488770e+09  4.989644e+06         0.004743           0.058779
+Lower-FICO       13387  1.751643e+09  8.035093e+06         0.037014           0.458718
+Mid-FICO         28870  4.242026e+09  7.764931e+06         0.014770           0.183048
+Unknown             43  3.494235e+06  1.568825e+03         0.003623           0.044898
+
+ECL Summary Computed.
+Total Portfolio ECL (Point Estimate): $20,791,235.90

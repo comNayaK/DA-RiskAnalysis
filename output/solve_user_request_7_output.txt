@@ -1,0 +1,105 @@
+================================================================================
+(1) Common Matrix Definition & Annual Direct PDs (Ex-Hurricane)
+================================================================================
+Matrix Definition: Trailing 24m (201701-201812), Excludes FL/TX/PR in 2017. Truncation policy applied implicitly by using clean_monthly_performance.
+Calibrated Matrix Stage 1 PDs: Current=0.26%, 30_DPD=9.35%, 60_DPD=51.00%
+Calibrated Matrix Lifetime PDs: Current=3.45%, 30_DPD=12.24%, 60_DPD=52.59%
+
+Annual Direct PD for Current:
+ Year  Direct_PD    Obs  Defs
+ 2015   0.002631 185480 488.0
+ 2016   0.002196 213592 469.0
+ 2017   0.001927 231433 446.0
+ 2018   0.002180 186690 407.0
+ 2019   0.002056 192112 395.0
+
+Annual Direct PD for 30_DPD:
+ Year  Direct_PD  Obs  Defs
+ 2015   0.171464  799 137.0
+ 2016   0.169426 1027 174.0
+ 2017   0.160550 1308 210.0
+ 2018   0.117778 1350 159.0
+ 2019   0.148905 1370 204.0
+
+Annual Direct PD for 60_DPD:
+ Year  Direct_PD  Obs  Defs
+ 2015   0.572289  166  95.0
+ 2016   0.674877  203 137.0
+ 2017   0.527132  258 136.0
+ 2018   0.622137  262 163.0
+ 2019   0.631922  307 194.0
+
+================================================================================
+(2) Single Partition of 201812 & 201912 into Pop 1 / Pop 2 / Pop 3
+================================================================================
+201912 Partition:
+      Count           UPB
+pop                      
+1    171647  2.825674e+10
+2      1964  3.341405e+08
+3       682  1.172653e+08
+Total: 174293 loans, $28,708,141,480.57
+
+================================================================================
+(3) Staging Rules & Probation Rule
+================================================================================
+Staging Rules: Pop 3 is Stage 3 (Default). For Pop 1 & 2: Current -> Stage 1. 30_DPD, 60_DPD -> Stage 2.
+Pop 2 Probation Rule: All Pop 2 loans stay in Stage 2 (or 3) until 24 months clean (or flatly treated as Stage 2).
+
+================================================================================
+(4) 60 DPD Monotonicity Result (with CIs), Ex-Hurricane & Prior Delinquency
+================================================================================
+High-FICO 60 DPD:
+  1-Step Default: 45.01% [43.38%, 46.65%] (N=3546.0)
+  12m PD: 60.59%
+  Lifetime PD: 61.09%
+Mid-FICO 60 DPD:
+  1-Step Default: 35.87% [34.63%, 37.13%] (N=5653.0)
+  12m PD: 55.42%
+  Lifetime PD: 57.39%
+Lower-FICO 60 DPD:
+  1-Step Default: 30.68% [29.50%, 31.89%] (N=5700.0)
+  12m PD: 51.76%
+  Lifetime PD: 57.96%
+
+================================================================================
+(5) LGD Tail Inputs & Pop 1 Backtest (Excl Pop 2)
+================================================================================
+Modified UPB: $201,229,039.43
+Cumulative Re-default: 40.0%, P(Liq | Re-default): 60.0%, Severity: 31.3%
+LGD Tail = $15,116,325.44
+
+Pop 1 Backtest (Excluding Pop 2):
+Current    Obs=169296 Act=301  Exp=432.4  Z=-6.33
+30_DPD     Obs=1139   Act=142  Exp=106.5  Z=+3.61
+60_DPD     Obs=194    Act=111  Exp=98.9   Z=+1.73
+Aggregate Pop 1: Act=554, Exp=637.8, Z=-3.32
+
+================================================================================
+(6) Complete ECL Grid: Population x Stage x LGD Ranges
+================================================================================
+Stage-Level ECL by LGD Range:
+
+Stage 1 (UPB: $28,035,858,461.15, Obs: 170323):
+  Censor Lower    ECL = $8,234,456.97
+  Censor Upper    ECL = $9,738,140.42
+  Censor + Tail   ECL = $8,272,160.18
+  Purge           ECL = $11,957,863.61
+
+Stage 2 (UPB: $555,017,696.19, Obs: 3288):
+  Censor Lower    ECL = $29,101,095.40
+  Censor Upper    ECL = $34,415,208.48
+  Censor + Tail   ECL = $29,234,340.93
+  Purge           ECL = $42,259,851.59
+
+Stage 3 (UPB: $117,265,323.23, Obs: 682):
+  Censor Lower    ECL = $13,485,512.17
+  Censor Upper    ECL = $15,948,083.96
+  Censor + Tail   ECL = $13,547,258.45
+  Purge           ECL = $19,583,308.98
+
+Total ECL Ranges:
+  Censor Lower    = $50,821,064.55
+  Censor Upper    = $60,101,432.86
+  Censor + Tail   = $51,053,759.56
+  Purge           = $73,801,024.17

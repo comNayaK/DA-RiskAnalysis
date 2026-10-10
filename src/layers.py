@@ -4,20 +4,21 @@ Layers 1 to 3: Clean Panel Construction, Truncation, Transitions, Vintages & ECL
 import duckdb
 from src.config import PRE_COVID_CUTOFF, ECL_SNAPSHOT_PERIOD
 
-def build_layer1_clean_performance(con: duckdb.DuckDBPyConnection):
+def build_layer1_clean_performance(con: duckdb.DuckDBPyConnection, as_of_date: int = PRE_COVID_CUTOFF):
     """
-    Layer 1: clean_monthly_performance (Untruncated Base Layer)
+    Layer 1: clean_monthly_performance
     - Maps delinquency and zero-balance codes to Basel/RBI 90-day states.
-    - Applies hard pre-COVID cutoff (<= 202002).
-    - Excludes modified loans ('Y') to establish contractual baseline risk.
+    - Captures 'Modified' as an explicit state.
     """
-    print("[Layer 1] Building clean_monthly_performance...")
+    print(f"[Layer 1] Building clean_monthly_performance (As of {as_of_date})...")
+    
     con.execute(f"""
     CREATE OR REPLACE TABLE clean_monthly_performance AS
     WITH Mod_Dates AS (
         SELECT loan_id, MIN(CAST(monthly_reporting_period AS INT)) as mod_period
         FROM raw_performance
         WHERE COALESCE(modification_flag, '') IN ('Y', 'P')
+          AND CAST(monthly_reporting_period AS INT) <= {as_of_date}
         GROUP BY loan_id
     )
     SELECT
@@ -27,15 +28,18 @@ def build_layer1_clean_performance(con: duckdb.DuckDBPyConnection):
         COALESCE(TRY_CAST(r.zero_balance_removal_upb AS DOUBLE), 0) AS zero_balance_removal_upb,
         COALESCE(TRY_CAST(r.current_actual_upb AS DOUBLE), 0) AS current_actual_upb,
         TRY_CAST(r.actual_loss_calculation AS DOUBLE) AS actual_loss_calculation,
+        COALESCE(TRY_CAST(r.modification_cost AS DOUBLE), 0) AS modification_cost,
         r.zero_balance_code,
         r.current_delinquency_status,
         r.modification_flag,
+        m.mod_period as first_mod_period,
         CASE
             WHEN r.zero_balance_code IN ('02','03','09')
                  OR r.current_delinquency_status = 'RA' THEN 'Default'
             WHEN TRY_CAST(r.current_delinquency_status AS INT) >= 3 THEN 'Default'
             WHEN r.zero_balance_code = '01' THEN 'Paid_Off'
             WHEN r.zero_balance_code IN ('06','15','16','96') THEN 'Admin_Removal'
+            WHEN COALESCE(r.modification_flag, '') IN ('Y', 'P') THEN 'Modified'
             WHEN TRY_CAST(r.current_delinquency_status AS INT) = 2 THEN '60_DPD'
             WHEN TRY_CAST(r.current_delinquency_status AS INT) = 1 THEN '30_DPD'
             WHEN TRY_CAST(r.current_delinquency_status AS INT) = 0 THEN 'Current'
@@ -43,31 +47,30 @@ def build_layer1_clean_performance(con: duckdb.DuckDBPyConnection):
         END AS loan_state
     FROM raw_performance r
     LEFT JOIN Mod_Dates m ON r.loan_id = m.loan_id
-    WHERE CAST(r.monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
-      AND (m.mod_period IS NULL OR CAST(r.monthly_reporting_period AS INT) <= m.mod_period);
+    WHERE CAST(r.monthly_reporting_period AS INT) <= {as_of_date};
     """)
     cnt = con.execute("SELECT COUNT(*) FROM clean_monthly_performance").fetchone()[0]
     print(f"[Layer 1] clean_monthly_performance created: {cnt:,} rows.")
 
 def build_layer2_truncated_performance(con: duckdb.DuckDBPyConnection):
     """
-    Layer 2: truncated_performance (First-Default Truncated)
-    - Truncates history after the first default (inclusive) to enforce absorbing Markov properties.
-    - Excludes Admin_Removal and Uncertain_Quarantine.
+    Layer 2: truncated_performance (First-Default/Mod Truncated)
+    - Truncates history after the first default OR first modification.
     """
-    print("[Layer 2] Building truncated_performance...")
-    con.execute("""
+    print(f"[Layer 2] Building truncated_performance...")
+    
+    con.execute(f"""
     CREATE OR REPLACE TABLE truncated_performance AS
-    WITH first_default AS (
-        SELECT loan_id, MIN(monthly_reporting_period) AS first_default_period
+    WITH terminal_events AS (
+        SELECT loan_id, MIN(monthly_reporting_period) AS terminal_period
         FROM clean_monthly_performance
-        WHERE loan_state = 'Default'
+        WHERE loan_state IN ('Default', 'Modified')
         GROUP BY loan_id
     )
     SELECT c.*
     FROM clean_monthly_performance c
-    LEFT JOIN first_default f USING (loan_id)
-    WHERE c.monthly_reporting_period <= COALESCE(f.first_default_period, 999999)
+    LEFT JOIN terminal_events f USING (loan_id)
+    WHERE c.monthly_reporting_period <= COALESCE(f.terminal_period, 999999)
       AND c.loan_state NOT IN ('Uncertain_Quarantine', 'Admin_Removal');
     """)
     cnt = con.execute("SELECT COUNT(*) FROM truncated_performance").fetchone()[0]

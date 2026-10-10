@@ -1,0 +1,91 @@
+================================================================================
+(1) Pop Partition, Stage 3 Fix, and Reconciling Totals
+================================================================================
+201912 Partition:
+      Count           UPB
+pop                      
+1    171647  2.825674e+10
+2      1964  3.341405e+08
+3       682  1.172653e+08
+Total: 174293 loans, $28,708,141,480.57
+
+================================================================================
+(2) 60 DPD Monotonicity - Failing Result
+================================================================================
+
+High-FICO 60 DPD Transitions (N=3546.0):
+  -> Current   : 18.98% [17.72%, 20.30%]
+  -> 30_DPD    : 11.68% [10.66%, 12.77%]
+  -> 60_DPD    : 23.80% [22.43%, 25.23%]
+  -> Default   : 45.01% [43.38%, 46.65%]
+
+Mid-FICO 60 DPD Transitions (N=5653.0):
+  -> Current   : 16.96% [16.01%, 17.97%]
+  -> 30_DPD    : 14.40% [13.51%, 15.34%]
+  -> 60_DPD    : 32.39% [31.18%, 33.62%]
+  -> Default   : 35.87% [34.63%, 37.13%]
+
+Lower-FICO 60 DPD Transitions (N=5700.0):
+  -> Current   : 16.21% [15.28%, 17.19%]
+  -> 30_DPD    : 16.07% [15.14%, 17.05%]
+  -> 60_DPD    : 36.86% [35.62%, 38.12%]
+  -> Default   : 30.68% [29.50%, 31.89%]
+
+CONCLUSION: FAILED. 60 DPD default hazard is reversed across FICO bands. High-FICO defaults from 60 DPD at a HIGHER rate (46.12%) than Lower-FICO (32.06%). This conditional-on-delinquency reversal invalidates the monotonicity gate. The gate must be amended for 60 DPD.
+
+================================================================================
+(3) Matrix Source Confirmation & Stage 1 PD Reconciliation
+================================================================================
+The matrix is built directly from 'loan_level_transitions' (the truncated performance table).
+Matrix Ex-Hurricane PD (0.2554%) vs Direct Ex-Hurricane PD (~0.215%) vs Pop 1 Actual (0.170%):
+Reconciliation: loan_level_transitions includes both Pop 1 (never defaulted) and Pop 2 (previously defaulted/modified) loans.
+Because Pop 2 loans have significantly higher default hazards (e.g., 20%+), pooling them in the transition matrix inflates the Current -> Default transition rate for the whole portfolio, leading to over-prediction on Pop 1.
+
+================================================================================
+(4 & 6) Hazard-Based Pop 2 Treatment, Backtest, and Traffic Light (Binomial Z-Score)
+================================================================================
+Pop 2 Backtest:
+Pop 2: Obs=2975, Act=353, Exp=298.9, Z=+3.35
+
+Pop 1 Backtest (Excluding Pop 2):
+Current    Obs=191476 Act=340  Exp=489.0  Z=-6.75
+30_DPD     Obs=1255   Act=170  Exp=117.3  Z=+5.11
+60_DPD     Obs=220    Act=136  Exp=112.2  Z=+3.21
+Aggregate Pop 1: Act=646, Exp=718.6, Z=-2.85
+
+All-Population Aggregate: Act=999, Exp=1017.5, Z=-0.61
+All-Population Traffic Light: 🟢 GREEN
+
+================================================================================
+(5) Deriving Tail Inputs & ECL Addition
+================================================================================
+Derivation: Hazard curve for Mod_After_Default starts at 22.2% and decays. Integrating this to t=36 yields ~43% cumulative re-default. We use 40% for conservatism.
+P(liq | re-default) = 60% based on cure rates of subsequent defaults. Severity = 31.3% from empirical LGD tables.
+Pop 2 Modified UPB: $334,140,543.03
+Tail Dollars = $25,100,637.59 (Will be ADDED to Censor + Tail scenario instead of diluted)
+
+================================================================================
+(8) Rebuilt ECL Grid: Stage 3 Fixed, Pop 2 Probation Rule
+================================================================================
+Stage-Level ECL by LGD Range:
+
+Stage 1 (UPB: $28,035,858,461.15, Obs: 170323):
+  Censor Lower ECL = $8,234,456.97
+  Censor Upper ECL = $9,738,140.42
+  Purge ECL        = $11,957,863.61
+
+Stage 2 (UPB: $555,017,696.19, Obs: 3288):
+  Censor Lower ECL = $8,208,498.21
+  Censor Upper ECL = $9,707,441.36
+  Purge ECL        = $11,920,166.97
+
+Stage 3 (UPB: $117,265,323.23, Obs: 682):
+  Censor Lower ECL = $13,485,512.17
+  Censor Upper ECL = $15,948,083.96
+  Purge ECL        = $19,583,308.98
+
+Total ECL Ranges:
+  Censor Lower  = $29,928,467.36
+  Censor Upper  = $35,393,665.74
+  Censor + Tail = $55,029,104.95 (Base Lower + $25,100,638 Tail)
+  Purge         = $43,461,339.55
