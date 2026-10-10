@@ -1,0 +1,4 @@
+[Audit] Found 7 origination file(s) and 7 performance file(s).
+[Audit] Origination columns detected: 31 (Sample file: sample_orig_2015.txt)
+[Audit] Performance columns detected: 35 (Sample file: sample_perf_2016.txt)
+[Audit] Sample Loan ID: F15Q10000025 -> Orig Year: 2000 + 15 = 2015

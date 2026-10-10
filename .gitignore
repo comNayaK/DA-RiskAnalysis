@@ -12,3 +12,5 @@ data/*.csv
 # Output
 output/*
 !output/.gitkeep
+data/
+.DS_Store

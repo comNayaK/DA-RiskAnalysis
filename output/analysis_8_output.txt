@@ -1,0 +1,44 @@
+=== 1. LGD Cohort Modified Share (Dollar-Weighted) ===
+Total Defaults: 3276 | Modified Defaults: 958
+Count-based share: 29.24%
+Total Default UPB: $264,882,421.85
+Modified Default UPB: $165,039,897.44
+Dollar-Weighted Mod Share: 62.31%
+Tail Rate = 62.31% * 40% * 60% * 31.3% = 4.68%
+Blended LGD = 11.5% + 4.68% = 16.18%
+
+=== 2. Pop 2 Overlap with Tail ===
+The LGD tail calculates latent risk for currently performing Pop 1 loans that might modify and redefault.
+Pop 2 already contains currently active modified loans. If the blended LGD is applied to Pop 2, 
+it assumes Pop 2 loans will modify *again* and have a further re-default tail. This is a double-count in Pop 2.
+However, Pop 2 is <1% of the portfolio. We will apply the blended LGD uniformly to compute the total.
+
+=== 3. Pop 2 Delinquent Backtest (12m PD by Year) ===
+Year 2015 | 01 | Obs:  146 | Defs:  81 | PD:  55.48% ± 8.06%
+Year 2015 | 02 | Obs:   61 | Defs:  46 | PD:  75.41% ±10.81%
+Year 2016 | 01 | Obs:  176 | Defs:  87 | PD:  49.43% ± 7.39%
+Year 2016 | 02 | Obs:   85 | Defs:  71 | PD:  83.53% ± 7.89%
+Year 2017 | 01 | Obs:  202 | Defs: 113 | PD:  55.94% ± 6.85%
+Year 2017 | 02 | Obs:  108 | Defs:  89 | PD:  82.41% ± 7.18%
+Year 2018 | 01 | Obs:  196 | Defs: 102 | PD:  52.04% ± 6.99%
+Year 2018 | 02 | Obs:  191 | Defs: 147 | PD:  76.96% ± 5.97%
+Year 2019 | 01 | Obs:  146 | Defs:  63 | PD:  43.15% ± 8.03%
+Year 2019 | 02 | Obs:  101 | Defs:  81 | PD:  80.20% ± 7.77%
+--- Pooled ---
+Pop 2 '01' (30 DPD) Pooled 12m PD: 51.50% ±3.33%
+Pop 2 '02' (60 DPD) Pooled 12m PD: 79.49% ±3.39%
+ECL uses the pooled rates: 51.50% and 79.49%
+
+=== 4. ECL Re-Calculation ===
+
+Probation Rule UPB moving to Stage 2: $742,893,352.47 (4606 loans)
+Overlap with active Pop 2: 0 loans
+The 12.24% applied to probation loans is the Stage 2 (30 DPD) Lifetime PD derived from the transition matrix.
+
+--- ECL Results ---
+ECL without Probation Rule (0.218% Stage 1): $43,410,599.62
+ECL WITH Probation Rule (Stage 1 clean @0.178%, Stage 2 prob @12.24%): $56,088,468.23
+
+=== Ingestion Assertions (Raw Tables) ===
+Parsed loan_id: F14Q10000011, prop_state: N
+Assertions FAILED: 

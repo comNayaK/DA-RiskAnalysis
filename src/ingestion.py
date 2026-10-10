@@ -36,13 +36,13 @@ def audit_files(orig_pattern: str, svcg_pattern: str):
     # Check loan ID format (field 20 for origination) and fields after
     orig_sample_line = subprocess.check_output(f"head -1 '{sample_orig}'", shell=True).decode().strip().split('|')
     loan_id_sample = orig_sample_line[19]
-    prop_state = orig_sample_line[20]
+    loan_term_sample = orig_sample_line[21]
     
     print(f"[Audit] Sample Loan ID: {loan_id_sample} -> Orig Year: 2000 + {loan_id_sample[1:3]} = {2000 + int(loan_id_sample[1:3])}")
     
     # Assertions
     assert len(loan_id_sample) == 12 and loan_id_sample.startswith('F'), f"Invalid loan_id pattern: {loan_id_sample}"
-    assert len(prop_state) == 2 and prop_state.isalpha(), f"Invalid property state: {prop_state}"
+    assert loan_term_sample.isdigit(), f"Invalid loan term: {loan_term_sample}"
     
     perf_sample_line = subprocess.check_output(f"head -1 '{sample_svcg}'", shell=True).decode().strip().split('|')
     reporting_period = perf_sample_line[1]
