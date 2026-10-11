@@ -41,10 +41,10 @@ The engine replaces naive historical accounting heuristics with an **absorbing M
 
 | Dimension | Baseline / Reference | Model Development Scenario | Modeling & Reserve Implication |
 |---|---|---|---|
-| **Portfolio ECL Scenario** | $35,797,234.15 (Calibrated Baseline) | **$45,073,225.70** (Headline Scenario @ 0.1560% Clean PD)<br>*(Sensitivity @ 0.1600%: $45,228,278.45)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~12% |
-| **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Dual Gate Rule: 🔴 FAIL / RED**<br>Total: $Z = -3.94\sigma$, Error = 11.0% | Model fails fixed ex-ante gate ($|z| > 2$ OR Error > 15%); over-predicts benign 2019 regime |
+| **Portfolio ECL Scenario** | $35,797,234.52 (Calibrated Baseline) | **$45,073,223.87** (Headline Scenario @ 0.1560% Clean PD)<br>*(Sensitivity @ 0.1600%: $45,228,278.45)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~11% |
+| **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Stricter Dual Tripwire: 🔴 FAIL / RED**<br>Total: $Z = -3.94\sigma$, Error = +11.0% | Model fails fixed ex-ante gate ($|z| > 2$ OR Error > 15%); over-predicts benign 2019 regime |
 | **LGD Framework** | 11.50% (Base Resolved Censor Lower) | **14.18%** (Blended Pop 1 with 48m Tail)<br>*(36m Horizon: 14.00% with 2.50% Tail)* | Derived on dollar-weighted first default basis (33.24% mod share, 43.0% re-default) |
-| **Pop 2 Reserve Burden** | Ignored in single-pop model | **$6,103,778.53 (13.54% of total ECL)**<br>*(13.50% at 0.1600% clean PD)* | 1.16% of UPB drives ~13.5% of post-probation provisions; tail double-counting avoided |
+| **Pop 2 Reserve Burden** | Ignored in single-pop model | **$6,103,776.53 (13.54% of total ECL)**<br>*(13.50% at 0.1600% clean PD)* | 1.16% of UPB drives ~13.5% of post-probation provisions; tail double-counting avoided |
 | **Data Integrity Audit** | Legacy column shifts | **0 Quarantine Rows (0.000%)** | Passes raw positive & negative shift assertions on flat files |
 
 ---
@@ -62,7 +62,7 @@ The active 201912 portfolio consists of **174,293 unique active loans** (`zero_b
   * *(Note on Alternative Cohort):* The broader cohort of 4,606 loans ($742.80M UPB) represented all Current loans with recent delinquency *before* removing the 292 Pop 2 Current loans that also had recent delinquency ($4,314 + 292 = 4,606$). Under that broader cohort, clean loans equaled exactly $170,323 - 4,606 = \mathbf{165,717}$.
   * Adding Pop 1 30 DPD (1,135), Pop 1 60 DPD (189), Pop 2 Current (675), Pop 2 Modified (1,069), Pop 2 30 DPD (134), Pop 2 60 DPD (86), and Pop 3 Default (682) sums **strictly to 174,293 loans**.
 
-### Master Table (Headline Scenario: Unified 0.1560% Clean PD, 4,314 Probation Loans, Pop 2 Modified $\ge$ 12m Hazard)
+### Master Table (Headline Scenario: Unified 0.1560% Clean PD, 4,314 Probation Loans, Pop 2 Modified Floored at Trailing Realized Rate)
 Every row recomputes exactly as $\text{ECL} = \text{UPB} \times \text{PD} \times \text{LGD}$. The total ECL of **$45,073,223.87** is strictly the sum of all nine rows extracted from `ecl_snapshot`.
 
 | Segment | Stage | Active Loans | Active UPB | Assigned PD | Assigned LGD | Calculated ECL | ECL Share |
@@ -72,7 +72,7 @@ Every row recomputes exactly as $\text{ECL} = \text{UPB} \times \text{PD} \times
 | **Pop 1: 30_DPD** | Stage 2 | 1,135 | $189,879,868.35 | 15.680% (Calibrated Life) | 14.18% | $4,221,834.56 | 9.37% |
 | **Pop 1: 60_DPD** | Stage 2 | 189 | $30,997,284.81 | 60.100% (Calibrated Life) | 14.18% | $2,641,644.41 | 5.86% |
 | **Pop 2: Current** | Stage 2 | 675 | $101,614,965.47 | 12.240% (Proxy Life) | 11.50% | $1,430,332.25 | 3.17% |
-| **Pop 2: Modified (Clean)** | Stage 2 | 1,069 | $201,229,039.43 | 10.480% (Floor = 12m Hazard) | 11.50% | $2,425,212.38 | 5.38% |
+| **Pop 2: Modified (Clean)** | Stage 2 | 1,069 | $201,229,039.43 | 10.480% (Floor = Trailing 2019 Realized) | 11.50% | $2,425,212.38 | 5.38% |
 | **Pop 2: 30_DPD** | Stage 2 | 134 | $19,034,568.03 | 51.500% (Pooled Historical) | 11.50% | $1,127,322.29 | 2.50% |
 | **Pop 2: 60_DPD** | Stage 2 | 86 | $12,261,970.10 | 79.490% (Pooled Historical) | 11.50% | $1,120,909.60 | 2.49% |
 | **Pop 3: Active Default** | Stage 3 | 682 | $117,265,323.23 | 100.000% | 14.18% | $16,628,222.83 | 36.89% |
@@ -80,7 +80,7 @@ Every row recomputes exactly as $\text{ECL} = \text{UPB} \times \text{PD} \times
 
 * **Unification on 0.1560% Clean PD:** The Clean Stage 1 PD is unified to **0.1560%** across both the Master Table and out-of-sample backtest (derived from 323 defaults / 207,061 clean loans in the trailing 201712 $\rightarrow$ 2018 window).
 * **Rounded 0.1600% Sensitivity:** In earlier development drafts, the rounded rate of **0.1600%** was shown, yielding Pop 1 Clean ECL of $6,202,109.93, a portfolio total of **$45,228,278.45**, and Pop 2 ECL of **$6,103,778.53 (13.50%)**. The delta between 0.1560% and 0.1600% is **$155,052.75** (0.34% of portfolio ECL), demonstrating high precision.
-* **Pop 2 Floor Adjustment:** Pop 2 Modified lifetime PD is floored at **10.48%** (matching its observed 12-month hazard floor, adding **+$263,813.27** over the unconstrained 9.34% rate). Pop 2 total ECL equals **$6,103,776.53** (**13.54%** of total ECL at 0.1560% clean PD; **13.50%** at 0.1600%).
+* **Pop 2 Floor Adjustment & Hazard Reconciliation:** Pop 2 Modified lifetime PD is floored at **10.480%**, representing the trailing 2019 realized default rate (119 defaults / 1,136 active modified loans = 10.475% ≈ 10.48%). This floor adds **+$263,813.27** over the unconstrained 9.34% rate (Pop 2 total ECL equals **$6,103,776.53**, **13.54%** of total ECL at 0.1560% clean PD; **13.50%** at 0.1600%). In the out-of-sample backtest, the parametric hazard model projected a 12-month default rate of **12.0599% (12.06%)**, predicting 137.0 expected defaults (+18.0 loans or +15.1% over the 119 actual defaults, relative error +13.1%, $Z = -1.64\sigma$). The Master Table provisions against the observed 10.48% trailing realized rate, whereas the backtest tests the uncalibrated 12.06% model forecast.
 
 ---
 
@@ -134,12 +134,14 @@ A basic econometric requirement of credit risk models is that a cumulative **Lif
 * **Confirmation:** The 0.1560% clean-history default rate was measured from the **201712 snapshot evaluated across 2018 outcomes** (323 defaults out of 207,061 clean loans).
 * Therefore, this parameter was known and available as of December 2018 (`201812`). It is **in-sample trailing history**, not post-hoc test data.
 
-### Pre-Determined Dual Acceptance Rule
-To avoid post-hoc bias where tolerance bands are widened to pass a failing model, the model governance acceptance rule is fixed *ex-ante* as:
-$$\text{\textbf{Dual Acceptance Gate: Fail if either test fails: }} |z| > 2.0 \quad \text{\textbf{OR}} \quad |\text{Relative Error}| > 15\%$$
-This rule is evaluated **per risk state** and for the **portfolio total**.
+### Pre-Determined Acceptance Rule (Stricter Dual Tripwire)
+To avoid post-hoc bias where tolerance bands are widened to pass a failing model, the model governance acceptance rule is fixed *ex-ante* as the **Stricter Dual Tripwire Standard**:
+$$\text{\textbf{Stricter Dual Tripwire Gate: Fail if either test fails: }} |z| > 2.0 \quad \text{\textbf{OR}} \quad |\text{Relative Error}| > 15\%$$
+This rule is evaluated **per risk state** and for the **portfolio total**, where relative error is strictly defined across all rows as:
+$$\text{Relative Error} = \frac{\text{Expected Defaults} - \text{Actual Defaults}}{\text{Expected Defaults}}$$
+A positive relative error indicates model over-prediction; a negative error indicates under-prediction.
 
-* **House Convention & Overdispersion Note:** The 15% relative error threshold is an internal **house convention / engineering heuristic**, not a regulatory standard. In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering, violating trial independence and generating overdispersion ($\text{Var}(D) = \phi \cdot n p (1-p)$ with variance inflation factor $\phi > 1$). Under standard unadjusted binomial testing ($\phi = 1$), standard errors compress artificially on large portfolios ($N \approx 195,000$), causing pure $Z$-scores to reject models on economically modest deviations. Pairing a 15% materiality threshold with the statistical $Z$-score operates across two distinct sample regimes: on large cohorts ($N \approx 195,000$), the 15% limit benchmarks economic materiality; on thin delinquency buckets (e.g., Pop 2 30 DPD, $N = 115$), the $Z$-score filters random sampling noise. Under the conservative house rule ("Fail if either $|z| > 2.0$ OR $|\text{Rel Error}| > 15\%$"), Specification D fails on statistical significance ($Z = -3.94\sigma$) despite passing the 15% materiality tolerance (11.0% error). For production implementation (Gate 8), model governance should either calibrate a formal empirical variance inflation factor ($\phi > 1$) to account for mortgage clustering, or formalize a true joint significance-and-materiality rule requiring both conditions ($|z| > 2.0$ AND $|\text{Rel Error}| > 15\%$) for aggregate portfolio rejection.
+* **House Convention & Variance Inflation Note:** The 15% relative error threshold is an internal **house convention / engineering heuristic**, not a regulatory standard. In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering, violating trial independence and generating overdispersion ($\text{Var}(D) = \phi \cdot n p (1-p)$ with variance inflation factor $\phi > 1$). Under standard unadjusted binomial testing ($\phi = 1$), standard errors compress artificially on large portfolios ($N \approx 195,000$), causing pure $Z$-scores to reject models on economically modest deviations. Pairing a 15% materiality threshold with the statistical $Z$-score operates across two distinct sample regimes: on large cohorts ($N \approx 195,000$), the 15% limit benchmarks economic materiality; on thin delinquency buckets (e.g., Pop 2 30 DPD, $N = 115$), the $Z$-score filters random sampling noise. If a joint rule were adopted ($\text{Fail if BOTH } |z| > 2.0 \text{ AND } |\text{Rel Error}| > 15\%$), an empirical variance inflation factor $\phi > 1$ would be required to prevent large-sample false rejections. Under the **stricter dual tripwire** selected here, no variance inflation is applied, enforcing maximum conservatism: Specification D fails on statistical significance ($Z = -3.94\sigma$) even though its portfolio error (+11.0%) falls within the 15% materiality tolerance.
 
 ### Out-of-Sample Scoring Across Specifications (Parameters Frozen $\le 201812$)
 We evaluate four specifications across the **194,925 active snapshot loans** at 201812 evaluated over calendar year 2019 (realized defaults = **912**):
@@ -148,45 +150,45 @@ We evaluate four specifications across the **194,925 active snapshot loans** at 
 ====================================================================================================================================
                             OUT-OF-SAMPLE BACKTEST COMPARISON (201812 SNAPSHOT -> 2019 OUTCOMES)
 ====================================================================================================================================
-Segment                Active Loans   Actual Defs   12m PD Feeding Row   Expected Defs   Z-Score   Rel Error   Dual Gate Status
+Segment                Active Loans   Actual Defs   12m PD Feeding Row   Expected Defs   Z-Score   Rel Error [(Exp-Act)/Exp]   Stricter Gate Status
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION A: True Frozen Model Parameters (Data <= 201812 Pool)
-Pop 1: Current              191,476           340    0.2180% (In-Sample)         417.4    -3.79σ     +22.8%    🔴 FAIL (Z & Err)
-Pop 1: 30_DPD                 1,255           170   12.0800% (Matrix 12m)        151.6    +1.59σ     -10.8%    🟢 PASS
-Pop 1: 60_DPD                   220           136   59.0900% (Matrix 12m)        130.0    +0.82σ      +4.6%    🟢 PASS
-Pop 2: Current                  636            55    8.6500% (Observed 12m)       55.0    -0.00σ       0.0%    🟢 PASS
-Pop 2: 30_DPD                   115            34   53.1944% (Frozen Pool)        61.2    -5.08σ     -44.4%    🔴 FAIL (Z & Err)
-Pop 2: 60_DPD                    87            58   79.3258% (Frozen Pool)        69.0    -2.91σ     -15.9%    🔴 FAIL (Z & Err)
-Pop 2: Modified               1,136           119   12.0599% (Hazard 12m)        137.0    -1.64σ     -13.1%    🟢 PASS
+Pop 1: Current              191,476           340    0.2180% (In-Sample)         417.4    -3.79σ             +18.5%            🔴 FAIL (Z & Err)
+Pop 1: 30_DPD                 1,255           170   12.0800% (Matrix 12m)        151.6    +1.59σ             -12.1%            🟢 PASS
+Pop 1: 60_DPD                   220           136   59.0900% (Matrix 12m)        130.0    +0.82σ              -4.6%            🟢 PASS
+Pop 2: Current                  636            55    8.6500% (Observed 12m)       55.0    -0.00σ               0.0%            🟢 PASS
+Pop 2: 30_DPD                   115            34   53.1944% (Frozen Pool)        61.2    -5.08σ             +44.4%            🔴 FAIL (Z & Err)
+Pop 2: 60_DPD                    87            58   79.3258% (Frozen Pool)        69.0    -2.91σ             +15.9%            🔴 FAIL (Z & Err)
+Pop 2: Modified               1,136           119   12.0599% (Hazard 12m)        137.0    -1.64σ             +13.1%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL A           194,925           912                              1,021.2    -3.81σ     +12.0%    🔴 FAIL (|Z| > 2.0)
-DIAGNOSIS: Over-predicts total portfolio defaults by +12.0% (+109.2 loans). Driven by Pop 1 Current and Pop 2 delinquent.
+PORTFOLIO TOTAL A           194,925           912                              1,021.2    -3.81σ             +10.7%            🔴 FAIL (|Z| > 2.0)
+DIAGNOSIS: Over-predicts total portfolio defaults by +10.7% (+109.2 loans). Driven by Pop 1 Current (+18.5%) and Pop 2 delinquent.
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION B: Trailing 1-Year Clean-History Baseline (201712 -> 2018: 0.1560%)
-Pop 1: Current              191,476           340    0.1560% (Trailing Clean)    298.7    +2.39σ     +13.8%    🔴 FAIL (|Z| > 2.0)
-Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ      -5.3%    🟢 PASS
+Pop 1: Current              191,476           340    0.1560% (Trailing Clean)    298.7    +2.39σ             -13.8%            🔴 FAIL (|Z| > 2.0)
+Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ              +5.3%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL B           194,925           912                                902.5    +0.35σ      -1.0%    🟢 PASS (Masked)
-DIAGNOSIS: The aggregate pass (+0.35σ, -1.0% error) is driven entirely by offsetting errors: Pop 1 Current under-predicts
-by +41.3 loans (+2.39σ), which masks severe over-prediction in Pop 2 delinquent states (-5.08σ and -2.91σ).
+PORTFOLIO TOTAL B           194,925           912                                902.5    +0.35σ              -1.1%            🟢 PASS (Masked)
+DIAGNOSIS: The aggregate pass (+0.35σ, -1.1% error) is driven entirely by offsetting errors: Pop 1 Current under-predicts
+by -41.3 loans (-13.8%), which masks severe over-prediction in Pop 2 delinquent states (+44.4% and +15.9%).
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION C: Pre-2018 Clean-History Baseline (Data <= 201712 Snapshots Ex-Hurricane)
-Pop 1: Current              191,476           340    0.1800% (Ex-Hurr Pool)      344.7    -0.25σ      -1.4%    🟢 PASS
-Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ      -5.3%    🟢 PASS
+Pop 1: Current              191,476           340    0.1800% (Ex-Hurr Pool)      344.7    -0.25σ              +1.4%            🟢 PASS
+Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ              +5.3%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL C           194,925           912                                948.5    -1.18σ      +4.0%    🟢 PASS (Masked)
-DIAGNOSIS: Clean-history rate pooled over 2014-2016 snapshots ex-hurricane (0.180%). Pop 1 Current tracks well (-0.25σ),
+PORTFOLIO TOTAL C           194,925           912                                948.5    -1.18σ              +3.8%            🟢 PASS (Masked)
+DIAGNOSIS: Clean-history rate pooled over 2014-2016 snapshots ex-hurricane (0.180%). Pop 1 Current tracks well (+1.4%),
 but Pop 2 delinquencies still fail their individual gates (-5.08σ and -2.91σ).
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION D: Production Staged Structure (Clean @ 0.1560%, Probation @ 3.2236%)
-Pop 1: Current (Clean)      187,493           218    0.1560% (Trailing Clean)    292.5    -4.36σ     -25.5%    🔴 FAIL (Z & Err)
-Pop 1: Current (Probation)    3,983           122    3.2236% (Trailing Delq)     128.4    -0.57σ      -5.0%    🟢 PASS
-Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ      -5.3%    🟢 PASS
+Pop 1: Current (Clean)      187,493           218    0.1560% (Trailing Clean)    292.5    -4.36σ             +25.5%            🔴 FAIL (Z & Err)
+Pop 1: Current (Probation)    3,983           122    3.2236% (Trailing Delq)     128.4    -0.57σ              +5.0%            🟢 PASS
+Pop 1 & Pop 2 Other          3,449           572    Same as Spec A               603.8    -1.30σ              +5.3%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL D           194,925           912                              1,024.7    -3.94σ     +11.0%    🔴 FAIL (|Z| > 2.0)
-DIAGNOSIS: Scoring the production staged structure directly shows that while probation Current tracks closely (-0.57σ),
-the benign 2019 regime causes clean loans (218 act vs 292.5 exp) and Pop 2 delinquencies to over-predict overall.
-Under the dual rule ("fail if |z| > 2 or error > 15%"), Spec D FAILS on |z| = 3.94 > 2.0.
+PORTFOLIO TOTAL D           194,925           912                              1,024.7    -3.94σ             +11.0%            🔴 FAIL (|Z| > 2.0)
+DIAGNOSIS: Scoring the production staged structure directly shows that while probation Current tracks closely (-0.57σ, +5.0%),
+the benign 2019 regime causes clean loans (218 act vs 292.5 exp, +25.5%) and Pop 2 delinquencies to over-predict overall.
+Under the stricter dual tripwire ("fail if |z| > 2 or error > 15%"), Spec D FAILS on |z| = 3.94 > 2.0.
 ====================================================================================================================================
 ```
 

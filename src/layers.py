@@ -155,6 +155,8 @@ def build_layer3_transitions(con: duckdb.DuckDBPyConnection):
 def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
     """
     Creates views for cohort densified vintage default curves.
+    Rule: Cohorts defined at origination (350,000 loans); modification treated
+    as censoring at its date, keeping modified-after-default loans (6,009 defaults).
     """
     print("[Vintages] Building vintage curve views...")
     con.execute(f"""
@@ -163,12 +165,6 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
         2000 + CAST(SUBSTRING(loan_id, 2, 2) AS INT) AS orig_year,
         COUNT(*) AS loans_originated
     FROM raw_origination o
-    WHERE NOT EXISTS (
-        SELECT 1 FROM raw_performance p
-        WHERE p.loan_id = o.loan_id
-          AND CAST(p.monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
-          AND COALESCE(p.modification_flag, '') IN ('Y', 'P')
-    )
     GROUP BY orig_year;
 
     CREATE OR REPLACE VIEW v_defaults_by_age AS
@@ -192,12 +188,6 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
         FROM truncated_performance p
         INNER JOIN raw_origination o ON p.loan_id = o.loan_id
         WHERE p.loan_state = 'Default'
-          AND NOT EXISTS (
-              SELECT 1 FROM raw_performance rp
-              WHERE rp.loan_id = o.loan_id
-                AND CAST(rp.monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
-                AND COALESCE(rp.modification_flag, '') IN ('Y', 'P')
-          )
         GROUP BY orig_year, p.loan_age
     )
     SELECT
