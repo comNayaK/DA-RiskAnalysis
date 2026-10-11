@@ -53,9 +53,9 @@ def reproduce_vintage_curves():
     violations = con.execute(q_subset).fetchone()[0]
     print(f"Violations where default loan age > max observable age prior to 202002: {violations} (Passed: numerator ⊆ observable denominator)\n")
 
-    print("=====================================================================================================")
-    print("                      3. VINTAGE CURVES AT KEY MILESTONES (12, 24, 36, 48, 60 MONTHS)                ")
-    print("=====================================================================================================")
+    print("=========================================================================================================================")
+    print("                      3. VINTAGE CURVES AT KEY MILESTONES (12, 24, 36, 48, 60 MONTHS)                                   ")
+    print("=========================================================================================================================")
     q_curves = """
     SELECT 
         orig_year, 
@@ -63,18 +63,60 @@ def reproduce_vintage_curves():
         new_defaults_at_age, 
         observable_loans, 
         cumulative_defaults, 
-        monthly_hazard_pct,
-        cumulative_default_rate_pct
+        per_original_loan_incidence_pct,
+        cumulative_incidence_per_observable_pct
     FROM v_vintage_curves
     WHERE loan_age IN (12, 24, 36, 48, 60)
     ORDER BY orig_year, loan_age;
     """
     curves = con.execute(q_curves).fetchall()
-    print("| Vintage | Age (m) | New Defaults | Observable Denominator | Cumulative Defaults | Monthly Hazard % | KM Cumulative Default Rate % |")
+    print("| Vintage | Age (m) | New Defaults | Observable Denominator | Cumulative Defaults | Per-Original-Loan Incidence % | Cumulative Incidence per Observable Loan % |")
     print("|---|---|---|---|---|---|---|")
     for c in curves:
         print(f"| **{c[0]}** | {c[1]:2d} | {c[2]:3d} | {c[3]:6,d} | {c[4]:4d} | {c[5]:6.4f}% | **{c[6]:6.4f}%** |")
-    print("=====================================================================================================")
+    print("=========================================================================================================================\n")
+
+    print("=========================================================================================================================")
+    print("                      4. EMPIRICAL 6-MONTH-BINNED HAZARDS (MONTHS 1 TO 60)                                              ")
+    print("=========================================================================================================================")
+    q_binned = """
+    WITH binned AS (
+        SELECT 
+            orig_year,
+            CASE 
+                WHEN loan_age BETWEEN 1 AND 6 THEN '01-06m'
+                WHEN loan_age BETWEEN 7 AND 12 THEN '07-12m'
+                WHEN loan_age BETWEEN 13 AND 18 THEN '13-18m'
+                WHEN loan_age BETWEEN 19 AND 24 THEN '19-24m'
+                WHEN loan_age BETWEEN 25 AND 30 THEN '25-30m'
+                WHEN loan_age BETWEEN 31 AND 36 THEN '31-36m'
+                WHEN loan_age BETWEEN 37 AND 42 THEN '37-42m'
+                WHEN loan_age BETWEEN 43 AND 48 THEN '43-48m'
+                WHEN loan_age BETWEEN 49 AND 54 THEN '49-54m'
+                WHEN loan_age BETWEEN 55 AND 60 THEN '55-60m'
+                ELSE '60m+'
+            END AS age_bin,
+            SUM(new_defaults_at_age) AS bin_defaults,
+            AVG(observable_loans) AS avg_obs_loans
+        FROM v_vintage_curves
+        WHERE loan_age BETWEEN 1 AND 60
+        GROUP BY orig_year, age_bin
+    )
+    SELECT 
+        age_bin,
+        SUM(bin_defaults) AS total_defaults,
+        AVG(avg_obs_loans) * 7 AS total_obs_loans,
+        ROUND(SUM(bin_defaults) * 100.0 / (AVG(avg_obs_loans) * 7), 4) AS binned_hazard_pct
+    FROM binned
+    GROUP BY age_bin
+    ORDER BY age_bin;
+    """
+    binned_rows = con.execute(q_binned).fetchall()
+    print("| Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Binned Hazard % |")
+    print("|---|---|---|---|")
+    for b in binned_rows:
+        print(f"| **{b[0]}** | {b[1]:,d} | {b[2]:,.0f} | **{b[3]:.4f}%** |")
+    print("=========================================================================================================================")
 
 if __name__ == "__main__":
     reproduce_vintage_curves()

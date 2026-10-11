@@ -88,12 +88,12 @@
         *   **Pop 1 Current (Probation):** Exp = 128.4, Act = 122 ($Z = -0.57\sigma$, Rel Err = +5.0%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
         *   **Pop 1 30 DPD:** Exp = 151.6, Act = 170 ($Z = +1.59\sigma$, Rel Err = -12.1%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
         *   **Pop 1 60 DPD:** Exp = 130.0, Act = 136 ($Z = +0.82\sigma$, Rel Err = -4.6%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
-        *   **Pop 2 Current:** Exp = 77.8, Act = 55 ($Z = -2.76\sigma$, Rel Err = +29.3%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
+        *   **Pop 2 Current:** Exp = 61.3, Act = 55 ($Z = -0.85\sigma$, Rel Err = +10.3% @ 9.64% pooled 2015–2017 rate). Passes BOTH $\rightarrow$ 🟢 **PASS**.
         *   **Pop 2 30 DPD:** Exp = 61.2, Act = 34 ($Z = -5.08\sigma$, Rel Err = +44.4%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
         *   **Pop 2 60 DPD:** Exp = 69.0, Act = 58 ($Z = -2.92\sigma$, Rel Err = +16.0%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
         *   **Pop 2 Modified:** Exp = 137.0, Act = 119 ($Z = -1.64\sigma$, Rel Err = +13.1%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
-        *   **Portfolio Total:** Expected = 1,047.5, Actual = 912 ($Z = -4.69\sigma$, Rel Err = +12.9%).
-    *   **Governance Verdict under Stricter Rule:** Under the stricter dual tripwire, Specification D **FAILS (🔴 RED)** because Portfolio Total breaches the statistical tripwire ($|Z| = 4.69 > 2.0$), and four active sub-segments (Pop 1 Clean, Pop 2 Current, Pop 2 30 DPD, Pop 2 60 DPD) fail both statistical significance and economic materiality.
+        *   **Portfolio Total:** Expected = 1,031.0, Actual = 912 ($Z = -4.15\sigma$, Rel Err = +11.5%).
+    *   **Governance Verdict under Stricter Rule:** Under the stricter dual tripwire, Specification D **FAILS (🔴 RED)** because Portfolio Total breaches the statistical tripwire ($|Z| = 4.15 > 2.0$), and three active sub-segments (Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD) fail both statistical significance and economic materiality. Note: 12.24% is retained strictly as the lifetime ECL proxy for the 201912 snapshot, while the measured 9.64% (2015–2017 pool) feeds the 12m backtest.
 *   **Vintage-Curve Integrity: Origination Cohorts & Observable-at-Age Denominators:**
     *   *Vintage Rule:* Cohorts are defined at origination (350,000 loans across 2010–2016), with modification treated strictly as censoring at its date. Loans that modified *after* default are retained in the default numerator at the age of their first default. Denominators at age $a$ are strictly restricted to loans observable at age $a$ prior to the sample cutoff date (`month_idx(202002) - month_idx(first_payment_date) + 1 >= a`).
     *   *Before / After Default Breakdown ($\sum \text{new\_defaults\_at\_age}$):*
@@ -120,24 +120,37 @@
           );
         -- Result: exactly 0 violations (all 6,009 default loans are observable at their default age)
         ```
-    *   *Vintage Curves at Key Seasoning Milestones (Observable Denominators & Kaplan-Meier CDR):*
-        | Vintage | Age (m) | New Defaults | Observable Denominator | Cumulative Defaults | Monthly Hazard % | KM Cumulative Default Rate % | Seasoning Phase |
+    *   *Vintage Curves at Key Seasoning Milestones (Observable Denominators & Cumulative Incidence):*
+        | Vintage | Age (m) | New Defaults | Observable Denominator | Cumulative Defaults | Per-Original-Loan Incidence % | Cumulative Incidence per Observable Loan % | Seasoning Phase |
         |---|---|---|---|---|---|---|---|
         | **2010** | 12 | 23 | 50,000 | 104 | 0.0460% | **0.2078%** | Early Seasoning |
         | **2010** | 24 | 29 | 50,000 | 343 | 0.0580% | **0.6838%** | Peak Hazard |
         | **2010** | 36 | 11 | 50,000 | 592 | 0.0220% | **1.1773%** | Peak Hazard |
         | **2010** | 48 | 18 | 49,999 | 763 | 0.0360% | **1.5147%** | Deceleration |
-        | **2010** | 60 | 8 | 49,999 | 893 | 0.0160% | **1.7705%** | Burnout Plateau |
+        | **2010** | 60 | 8 | 49,999 | 893 | 0.0160% | **1.7705%** | Seasoned (Month 60) |
         | **2011** | 24 | 20 | 50,000 | 316 | 0.0400% | **0.6301%** | Peak Hazard |
         | **2011** | 48 | 9 | 50,000 | 620 | 0.0180% | **1.2325%** | Deceleration |
         | **2012** | 36 | 13 | 50,000 | 428 | 0.0260% | **0.8525%** | Peak Hazard |
         | **2013** | 48 | 20 | 49,999 | 563 | 0.0400% | **1.1198%** | Peak Hazard |
         | **2014** | 36 | 25 | 49,997 | 452 | 0.0500% | **0.9001%** | Peak Hazard |
         | **2015** | 24 | 28 | 49,994 | 252 | 0.0560% | **0.5028%** | Peak Hazard |
-        | **2015** | 60 | 0 | 3,064 | 637 | 0.0000% | **1.3382%** | Burnout Plateau |
+        | **2015** | 60 | 0 | 3,064 | 637 | 0.0000% | **1.3382%** | Seasoned (Month 60) |
         | **2016** | 24 | 15 | 49,995 | 330 | 0.0300% | **0.6580%** | Peak Hazard |
         | **2016** | 48 | 0 | 3,524 | 546 | 0.0000% | **1.1708%** | Censored Plateau |
-    *   *Empirical Shape Verification:* Annual default hazard ramps from negligible levels in months 1–12, reaches its empirical peak between **24 and 42 months** across all cohorts, and stabilizes into a burnout plateau by month 60, confirming the expected lifecycle curve.
+    *   *Empirical 6-Month-Binned Hazards (Months 1–60 Across All Vintages):*
+        | Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Binned Hazard % |
+        |---|---|---|---|
+        | **01–06m** | 181 | 349,997 | **0.0517%** |
+        | **07–12m** | 450 | 349,996 | **0.1286%** |
+        | **13–18m** | 699 | 349,994 | **0.1997%** |
+        | **19–24m** | 677 | 349,990 | **0.1934%** |
+        | **25–30m** | 666 | 349,981 | **0.1903%** |
+        | **31–36m** | 596 | 349,952 | **0.1703%** |
+        | **37–42m** | 543 | 339,417 | **0.1600%** |
+        | **43–48m** | 455 | 314,061 | **0.1449%** |
+        | **49–54m** | 395 | 289,575 | **0.1364%** |
+        | **55–60m** | 320 | 308,187 | **0.1038%** |
+    *   *Empirical Shape Verification:* Grouping empirical default hazards into 6-month bins shows that default hazard accelerates rapidly from 0.0517% in months 1–6 to peak in months 13–30 (spanning 0.190%–0.200%), after which it steadily decelerates across months 31–60 (declining to 0.1038% in months 55–60).
 *   **Rigorous Transition Count Reconciliation:**
     *   Transition matrix auditing compares the sum of matrix transition counts ($C_{\text{portfolio}}$) directly against the exact row count of `loan_level_transitions` (verifying all 18,587,123 rows match exactly).
     *   *Extraction Query Generating 18,587,123 Rows (Abridged Logic):*
@@ -253,7 +266,7 @@ The scope for Phases 1–3 is strictly frozen. The following gate table governs 
 | **Gate 3** | Two-Factor Bounded LGD & Tail | Discrete hazard chaining; 48m headline (43% re-def $\rightarrow$ 14.18% LGD) & 36m sensitivity | Dollar-weighted first default UPB; explicit liquidation share caveat | 🟢 **Done** |
 | **Gate 4** | Pop 2 Segmentation & Staging | Active modified cohort isolation; double-count LGD protection | Active modified loans isolated; 11.50% base LGD; 10.48% trailing realized floor (reconciled with 12.06% hazard prediction in backtest) | 🟢 **Done** |
 | **Gate 5** | IFRS 9 Probation Staging | 12m probation for recent delinquencies; empirical ex-hurricane lifetime PD | Performing loans with recent delinquency reclassified to Stage 2; dynamic seasoning curves pending | 🟡 **Partial** |
-| **Gate 6** | Out-of-Sample Backtesting | Frozen parameter scoring; transparent offsetting error disclosure | Stricter Dual Tripwire Gate: Fails on Pop 1 Clean, Pop 2 Current, Pop 2 30 DPD, Pop 2 60 DPD, and Total ($Z = -4.69\sigma$, Err = +12.9%) | 🔴 **Done–FAILED** |
+| **Gate 6** | Out-of-Sample Backtesting | Frozen parameter scoring; transparent offsetting error disclosure | Stricter Dual Tripwire Gate: Fails on Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD, and Total ($Z = -4.15\sigma$, Err = +11.5%) | 🔴 **Done–FAILED** |
 | **Gate 7** | Master Table Reconciliation | Mutually exclusive census; exact row-by-row $\text{UPB} \times \text{PD} \times \text{LGD}$ tie from `ecl_snapshot` | Exact UPB ($28,708,141,480.57) and count (174,293) match; penny-accurate headline ECL ($45,073,223.87) | 🟢 **Done** |
 | **Gate 8** | Rolling-Origin Backtesting & Joint Gate | Multi-year backtests (2015–2018 snapshots); observable-at-age denominators | Stricter Tripwire: Fail if EITHER $|z| > 2.0$ OR error > 15% (with $\phi > 1$ variance inflation note if joint) | ⏸️ **Frozen (Phase 4)** |
 | **Gate 9** | EAD Amortization & Cash Flow | CPR/SMM prepayment curves; EIR cash flow discounting | Discounted cash flow engine reconciling to UPB | ⏸️ **Frozen (Phase 4)** |

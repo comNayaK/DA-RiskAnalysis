@@ -242,7 +242,12 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
                 WHEN o.observable_loans > 0 
                 THEN d.new_defaults_at_age * 1.0 / o.observable_loans 
                 ELSE 0.0 
-            END AS monthly_hazard
+            END AS monthly_hazard,
+            CASE
+                WHEN c.loans_originated > 0
+                THEN d.new_defaults_at_age * 1.0 / c.loans_originated
+                ELSE 0.0
+            END AS per_original_loan_inc
         FROM v_defaults_by_age d
         INNER JOIN v_vintage_loan_counts c USING (orig_year)
         INNER JOIN v_vintage_observable_counts o USING (orig_year, loan_age)
@@ -254,13 +259,17 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
         observable_loans,
         cumulative_defaults,
         loans_originated,
+        ROUND(per_original_loan_inc * 100.0, 4) AS per_original_loan_incidence_pct,
         ROUND(monthly_hazard * 100.0, 4) AS monthly_hazard_pct,
+        ROUND((1.0 - EXP(SUM(LN(GREATEST(1.0 - monthly_hazard, 0.000001))) OVER (
+            PARTITION BY orig_year ORDER BY loan_age
+        ))) * 100.0, 4) AS cumulative_incidence_per_observable_pct,
         ROUND((1.0 - EXP(SUM(LN(GREATEST(1.0 - monthly_hazard, 0.000001))) OVER (
             PARTITION BY orig_year ORDER BY loan_age
         ))) * 100.0, 4) AS cumulative_default_rate_pct
     FROM base_hazard;
     """)
-    print("[Vintages] v_vintage_curves view created successfully with observable denominators.")
+    print("[Vintages] v_vintage_curves view created successfully with relabeled observable columns.")
 
 def build_ecl_snapshot(con: duckdb.DuckDBPyConnection, snapshot_period: int = ECL_SNAPSHOT_PERIOD):
     """
