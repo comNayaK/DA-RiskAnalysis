@@ -96,9 +96,14 @@ ecl_prob_alt = 742803118.96 * 0.095100 * 0.1418
 tot_alt = (tot_headline - det_headline["Pop 1: Current (Clean)"] - det_headline["Pop 1: Current (Probation)"]) + ecl_clean_alt + ecl_prob_alt
 print(f"\n6. Alternative Cohort (4,606 Probation Loans): ${tot_alt:,.2f}")
 
-# 7. Censor Upper Bound (LGD Pop 1 = 16.21%, Pop 2 = 13.60%, Pop 3 = 16.21%):
+# 7. Censor Upper Bound:
+# Variant A: 16.21% Pop 1 (13.60% + 2.61% tail), 13.60% Pop 2, 16.21% Pop 3
 tot_upper, det_upper = calc_ecl(pds_headline, 0.1621, 0.1360, 0.1621)
-print(f"\n7. Censor Upper Bound (16.21% Pop 1 / 13.60% Pop 2): ${tot_upper:,.2f}")
+print(f"\n7a. Censor Upper Bound (16.21% Pop 1 / 13.60% Pop 2): ${tot_upper:,.2f}")
+
+# Variant B: 16.28% Pop 1 (13.60% + 2.68% 48m tail), 13.60% Pop 2, 16.28% Pop 3
+tot_upper_1628, _ = calc_ecl(pds_headline, 0.1628, 0.1360, 0.1628)
+print(f"7b. Censor Upper Bound (16.28% Pop 1 48m Tail / 13.60% Pop 2): ${tot_upper_1628:,.2f}")
 
 # 8. Regime-Calibrated Scenario (scaling non-Stage-3 by 0.88):
 ecl_s3 = det_headline["Pop 3: Active Default"]
@@ -114,4 +119,5 @@ print(f"36m Tail Scenario (14.00% LGD):  ${tot_36m:,.2f} (Delta vs Cal Base: +${
 print(f"Headline Scenario (14.18% LGD):  ${tot_headline:,.2f} (Delta vs Cal Base: +${tot_headline - tot_cal_base:,.2f})")
 print(f"Alternative Cohort (4,606):      ${tot_alt:,.2f} (Delta vs Cal Base: +${tot_alt - tot_cal_base:,.2f})")
 print(f"Censor Upper Bound (16.21% LGD): ${tot_upper:,.2f} (Delta vs Cal Base: +${tot_upper - tot_cal_base:,.2f})")
+print(f"Censor Upper Bound (16.28% LGD): ${tot_upper_1628:,.2f} (Delta vs Cal Base: +${tot_upper_1628 - tot_cal_base:,.2f})")
 print(f"Regime-Calibrated Scenario:      ${tot_regime:,.2f}")

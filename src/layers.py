@@ -162,11 +162,12 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
     SELECT
         2000 + CAST(SUBSTRING(loan_id, 2, 2) AS INT) AS orig_year,
         COUNT(*) AS loans_originated
-    FROM raw_origination
-    WHERE loan_id NOT IN (
-        SELECT loan_id FROM raw_performance 
-        WHERE CAST(monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
-          AND COALESCE(modification_flag, '') IN ('Y', 'P')
+    FROM raw_origination o
+    WHERE NOT EXISTS (
+        SELECT 1 FROM raw_performance p
+        WHERE p.loan_id = o.loan_id
+          AND CAST(p.monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
+          AND COALESCE(p.modification_flag, '') IN ('Y', 'P')
     )
     GROUP BY orig_year;
 
