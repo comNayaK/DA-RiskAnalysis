@@ -3,7 +3,7 @@
 
 **Document Type:** Errata Addendum to the Original Technical Implementation Plan  
 **Target Context:** Internal Model Development, Governance Review & Phase 4 Roadmap  
-**Status:** Working Development Plan (Phases 1–3 Complete; Phase 4 Scope Frozen)  
+**Status:** Working Development Plan (Phases 1–3 Implemented / Gate 6 Backtest Failed; Phase 4 Scope Frozen)  
 **Governance Notice:** This document serves as an errata addendum to the original technical plan. It codifies the econometric corrections, data schema lessons, and staging distinctions discovered during Phases 1–3 model development. This is an internal development document; formal model validation requires independent review under SR 11-7 / OCC 2011-12 standards.
 
 ---
@@ -83,19 +83,19 @@
     *   This rule is evaluated **per risk state** and for the **portfolio total**, where relative error is strictly computed as $\frac{\text{expected} - \text{actual}}{\text{expected}}$.
     *   *Joint Rule & Variance Inflation Note:* If a joint significance-and-materiality rule were selected ($\text{Breach if BOTH } |z| > 2.0 \text{ AND } |\text{Relative Error}| > 15\%$), mortgage default clustering across geography and macro factors would require an empirical variance inflation factor $\phi > 1$ ($\text{Var}(D) = \phi \cdot n p (1-p)$) so that infinite sample size on large cohorts ($N \approx 195,000$) does not trigger statistical rejections on economically modest deviations. Under the stricter tripwire selected here, no variance inflation is applied, enforcing maximum conservatism.
 *   **Application to Current Engine (Specification D under Stricter Standard):**
-    *   Scoring the production staged structure (Clean @ 0.1560%, Probation @ 3.2236%) against 2019 realized outcomes (194,925 loans, 912 defaults):
+    *   Scoring the production staged structure (Clean @ 0.1560%, Probation @ 3.2236%, Pop 2 Current @ 12.2400% frozen proxy) against 2019 realized outcomes (194,925 loans, 912 defaults) using exact binomial variance throughout:
         *   **Pop 1 Current (Clean):** Exp = 292.5, Act = 218 ($Z = -4.36\sigma$, Rel Err = +25.5%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
         *   **Pop 1 Current (Probation):** Exp = 128.4, Act = 122 ($Z = -0.57\sigma$, Rel Err = +5.0%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
-        *   **Pop 2 30 DPD:** Exp = 61.2, Act = 34 ($Z = -5.08\sigma$, Rel Err = +44.4%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
-        *   **Pop 2 60 DPD:** Exp = 69.0, Act = 58 ($Z = -2.91\sigma$, Rel Err = +15.9%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
         *   **Pop 1 30 DPD:** Exp = 151.6, Act = 170 ($Z = +1.59\sigma$, Rel Err = -12.1%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
         *   **Pop 1 60 DPD:** Exp = 130.0, Act = 136 ($Z = +0.82\sigma$, Rel Err = -4.6%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
-        *   **Pop 2 Current:** Exp = 55.0, Act = 55 ($Z = 0.00\sigma$, Rel Err = 0.0%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
+        *   **Pop 2 Current:** Exp = 77.8, Act = 55 ($Z = -2.76\sigma$, Rel Err = +29.3%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
+        *   **Pop 2 30 DPD:** Exp = 61.2, Act = 34 ($Z = -5.08\sigma$, Rel Err = +44.4%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
+        *   **Pop 2 60 DPD:** Exp = 69.0, Act = 58 ($Z = -2.92\sigma$, Rel Err = +16.0%). Fails BOTH ($|z| > 2.0$ AND Err $> 15\%$) $\rightarrow$ 🔴 **FAIL**.
         *   **Pop 2 Modified:** Exp = 137.0, Act = 119 ($Z = -1.64\sigma$, Rel Err = +13.1%). Passes BOTH $\rightarrow$ 🟢 **PASS**.
-        *   **Portfolio Total:** Expected = 1,024.7, Actual = 912 ($Z = -3.94\sigma$, Rel Err = +11.0%).
-    *   **Governance Verdict under Stricter Rule:** Under the stricter dual tripwire, Specification D **FAILS (🔴 RED)** because Portfolio Total breaches the statistical tripwire ($|Z| = 3.94 > 2.0$), and three critical active sub-segments (Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD) fail both statistical significance and economic materiality.
-*   **Vintage-Curve Integrity: Origination Cohorts & Modification Censoring:**
-    *   *Vintage Rule:* Cohorts are defined at origination or at-risk at age, with modification treated strictly as censoring at its date. Loans that modified *after* default are retained in the default numerator at the age of their first default.
+        *   **Portfolio Total:** Expected = 1,047.5, Actual = 912 ($Z = -4.69\sigma$, Rel Err = +12.9%).
+    *   **Governance Verdict under Stricter Rule:** Under the stricter dual tripwire, Specification D **FAILS (🔴 RED)** because Portfolio Total breaches the statistical tripwire ($|Z| = 4.69 > 2.0$), and four active sub-segments (Pop 1 Clean, Pop 2 Current, Pop 2 30 DPD, Pop 2 60 DPD) fail both statistical significance and economic materiality.
+*   **Vintage-Curve Integrity: Origination Cohorts & Observable-at-Age Denominators:**
+    *   *Vintage Rule:* Cohorts are defined at origination (350,000 loans across 2010–2016), with modification treated strictly as censoring at its date. Loans that modified *after* default are retained in the default numerator at the age of their first default. Denominators at age $a$ are strictly restricted to loans observable at age $a$ prior to the sample cutoff date (`month_idx(202002) - month_idx(first_payment_date) + 1 >= a`).
     *   *Before / After Default Breakdown ($\sum \text{new\_defaults\_at\_age}$):*
         | Vintage Cohort | Origination Loans (Denominator) | Before Defaults (Blanket Exclusion) | Restored Mod-After-Default | After Defaults (Keeping Mod-After-Default) |
         |---|---|---|---|---|
@@ -107,16 +107,37 @@
         | **2015** | 50,000 | 409 | +228 | **637** |
         | **2016** | 50,000 | 341 | +205 | **546** |
         | **TOTAL** | **350,000** | **4,164** | **+1,845** | **6,009** |
-    *   *Formal Numerator $\subseteq$ Denominator Test:*
+    *   *Formal Numerator $\subseteq$ Observable Denominator Test (Anti-Pattern Free `NOT EXISTS`):*
         ```sql
-        -- Assert that all defaults in the vintage curve numerator belong to origination cohorts:
-        SELECT COUNT(DISTINCT p.loan_id) AS violations
+        -- Assert that all defaults in the vintage curve numerator belong to observable origination cohorts:
+        SELECT COUNT(*) AS violations
         FROM truncated_performance p
         WHERE p.loan_state = 'Default'
-          AND p.loan_id NOT IN (SELECT loan_id FROM raw_origination);
-        -- Result: exactly 0 violations (all 6,009 default loans are in raw_origination)
+          AND NOT EXISTS (
+              SELECT 1 FROM raw_origination o
+              WHERE o.loan_id = p.loan_id
+                AND (month_idx(202002) - month_idx(TRY_CAST(o.first_payment_date AS INT)) + 1) >= p.loan_age
+          );
+        -- Result: exactly 0 violations (all 6,009 default loans are observable at their default age)
         ```
-    *   *Observable-at-Age Denominators:* Denominators at age $a$ must be restricted to loans that are *observable at age $a$* (`month_idx(cutoff) - month_idx(orig_period) >= a`). Dividing cumulative defaults by unseasoned loans understates defaults, while dividing new defaults by surviving active loans creates an artificial upward spike as prepayments thin the denominator.
+    *   *Vintage Curves at Key Seasoning Milestones (Observable Denominators & Kaplan-Meier CDR):*
+        | Vintage | Age (m) | New Defaults | Observable Denominator | Cumulative Defaults | Monthly Hazard % | KM Cumulative Default Rate % | Seasoning Phase |
+        |---|---|---|---|---|---|---|---|
+        | **2010** | 12 | 23 | 50,000 | 104 | 0.0460% | **0.2078%** | Early Seasoning |
+        | **2010** | 24 | 29 | 50,000 | 343 | 0.0580% | **0.6838%** | Peak Hazard |
+        | **2010** | 36 | 11 | 50,000 | 592 | 0.0220% | **1.1773%** | Peak Hazard |
+        | **2010** | 48 | 18 | 49,999 | 763 | 0.0360% | **1.5147%** | Deceleration |
+        | **2010** | 60 | 8 | 49,999 | 893 | 0.0160% | **1.7705%** | Burnout Plateau |
+        | **2011** | 24 | 20 | 50,000 | 316 | 0.0400% | **0.6301%** | Peak Hazard |
+        | **2011** | 48 | 9 | 50,000 | 620 | 0.0180% | **1.2325%** | Deceleration |
+        | **2012** | 36 | 13 | 50,000 | 428 | 0.0260% | **0.8525%** | Peak Hazard |
+        | **2013** | 48 | 20 | 49,999 | 563 | 0.0400% | **1.1198%** | Peak Hazard |
+        | **2014** | 36 | 25 | 49,997 | 452 | 0.0500% | **0.9001%** | Peak Hazard |
+        | **2015** | 24 | 28 | 49,994 | 252 | 0.0560% | **0.5028%** | Peak Hazard |
+        | **2015** | 60 | 0 | 3,064 | 637 | 0.0000% | **1.3382%** | Burnout Plateau |
+        | **2016** | 24 | 15 | 49,995 | 330 | 0.0300% | **0.6580%** | Peak Hazard |
+        | **2016** | 48 | 0 | 3,524 | 546 | 0.0000% | **1.1708%** | Censored Plateau |
+    *   *Empirical Shape Verification:* Annual default hazard ramps from negligible levels in months 1–12, reaches its empirical peak between **24 and 42 months** across all cohorts, and stabilizes into a burnout plateau by month 60, confirming the expected lifecycle curve.
 *   **Rigorous Transition Count Reconciliation:**
     *   Transition matrix auditing compares the sum of matrix transition counts ($C_{\text{portfolio}}$) directly against the exact row count of `loan_level_transitions` (verifying all 18,587,123 rows match exactly).
     *   *Extraction Query Generating 18,587,123 Rows (Abridged Logic):*
@@ -177,10 +198,13 @@
 
 ## 6. Backtest Design & Out-of-Sample Methodology
 
-*   **Consistent In-Sample vs Backtest Parameters:** Clean-history Stage 1 PD must be unified at **0.1560%** across both the Master Table and out-of-sample backtesting (derived from 323 / 207,061 in the trailing 201712 $\rightarrow$ 2018 window).
+*   **Consistent In-Sample vs Backtest Parameters & Policy Choice Disclosure:**
+    *   *Backtest Discipline:* Clean-history Stage 1 PD is set at **0.1560%** for out-of-sample backtesting (derived from 323 / 207,061 in the trailing 201712 $\rightarrow$ 2018 window). Using the 2019 outcome (0.1163%) in the backtest would constitute forbidden look-ahead leakage.
+    *   *Provisioning Policy Choice:* At the `201912` portfolio snapshot, the 2019 realized clean rate (0.1163% = 218 / 187,493) was already known. Applying 0.1560% in the Master Table is an explicit **conservative risk management policy choice** (incorporating multi-year cycle conservatism rather than pricing reserves to the trough of a historically benign year).
+    *   *Quantified Sensitivity:* Pricing Stage 1 Clean UPB ($27.34B) at the realized 2019 rate of 0.1163% lowers Stage 1 Clean ECL from $6,047,057.19 to $4,506,997.77 (**-$1,540,059.42 / -$1.54M**), pulling total portfolio ECL down from **$45,073,223.87** to **$43,533,164.45** (-3.42%).
 *   **Consistent Out-of-Time Training:** Matrix parameters for out-of-sample testing must be trained on all transitions observed strictly on or before the snapshot date (`monthly_reporting_period <= snapshot_date`), eliminating temporal mismatch.
 *   **Rolling-Origin Multi-Year Backtests:** Validating on a single benign year (2019) creates regime bias and over-prediction. The testing suite must implement rolling-origin backtests across snapshots 2015, 2016, 2017, and 2018 to evaluate model performance across both normal and stressed years prior to the 202002 pre-COVID cutoff.
-*   **Transparent Offsetting Error Disclosure:** Backtest reporting must present granular results by sub-segment (Pop 1 Current, 30 DPD, 60 DPD; Pop 2 Current, 30 DPD, 60 DPD, Modified). Offsetting errors (e.g., Stage 1 under-prediction masking Pop 2 over-prediction) must be documented explicitly.
+*   **Transparent Offsetting Error Disclosure:** Backtest reporting must present granular results by sub-segment (Pop 1 Current, 30 DPD, 60 DPD; Pop 2 Current, 30 DPD, 60 DPD, Modified). Offsetting errors (e.g., Stage 1 under-prediction masking Pop 2 over-prediction) must be documented explicitly without collapsing categories into an aggregate "Other" lump.
 *   **Consistent 12-Month PD Input:** Backtest predictions must strictly evaluate 12-month default probabilities against 12-month realized outcomes, avoiding the misapplication of lifetime PDs to single-year backtests.
 
 ---
@@ -229,7 +253,7 @@ The scope for Phases 1–3 is strictly frozen. The following gate table governs 
 | **Gate 3** | Two-Factor Bounded LGD & Tail | Discrete hazard chaining; 48m headline (43% re-def $\rightarrow$ 14.18% LGD) & 36m sensitivity | Dollar-weighted first default UPB; explicit liquidation share caveat | 🟢 **Done** |
 | **Gate 4** | Pop 2 Segmentation & Staging | Active modified cohort isolation; double-count LGD protection | Active modified loans isolated; 11.50% base LGD; 10.48% trailing realized floor (reconciled with 12.06% hazard prediction in backtest) | 🟢 **Done** |
 | **Gate 5** | IFRS 9 Probation Staging | 12m probation for recent delinquencies; empirical ex-hurricane lifetime PD | Performing loans with recent delinquency reclassified to Stage 2; dynamic seasoning curves pending | 🟡 **Partial** |
-| **Gate 6** | Out-of-Sample Backtesting | Frozen parameter scoring; transparent offsetting error disclosure | Stricter Dual Tripwire Gate: Fails on Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD, and Total ($Z = -3.94\sigma$, Err = +11.0%) | 🔴 **Done–FAILED** |
+| **Gate 6** | Out-of-Sample Backtesting | Frozen parameter scoring; transparent offsetting error disclosure | Stricter Dual Tripwire Gate: Fails on Pop 1 Clean, Pop 2 Current, Pop 2 30 DPD, Pop 2 60 DPD, and Total ($Z = -4.69\sigma$, Err = +12.9%) | 🔴 **Done–FAILED** |
 | **Gate 7** | Master Table Reconciliation | Mutually exclusive census; exact row-by-row $\text{UPB} \times \text{PD} \times \text{LGD}$ tie from `ecl_snapshot` | Exact UPB ($28,708,141,480.57) and count (174,293) match; penny-accurate headline ECL ($45,073,223.87) | 🟢 **Done** |
 | **Gate 8** | Rolling-Origin Backtesting & Joint Gate | Multi-year backtests (2015–2018 snapshots); observable-at-age denominators | Stricter Tripwire: Fail if EITHER $|z| > 2.0$ OR error > 15% (with $\phi > 1$ variance inflation note if joint) | ⏸️ **Frozen (Phase 4)** |
 | **Gate 9** | EAD Amortization & Cash Flow | CPR/SMM prepayment curves; EIR cash flow discounting | Discounted cash flow engine reconciling to UPB | ⏸️ **Frozen (Phase 4)** |

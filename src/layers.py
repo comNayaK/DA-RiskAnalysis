@@ -157,6 +157,7 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
     Creates views for cohort densified vintage default curves.
     Rule: Cohorts defined at origination (350,000 loans); modification treated
     as censoring at its date, keeping modified-after-default loans (6,009 defaults).
+    Denominators at age a are strictly restricted to loans observable at age a.
     """
     print("[Vintages] Building vintage curve views...")
     con.execute(f"""
@@ -197,22 +198,69 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
     FROM age_grid g
     LEFT JOIN raw_defaults r ON g.orig_year = r.orig_year AND g.loan_age = r.loan_age;
 
-    CREATE OR REPLACE VIEW v_vintage_curves AS
+    CREATE OR REPLACE VIEW v_vintage_observable_counts AS
+    WITH loan_max_obs AS (
+        SELECT 
+            loan_id,
+            2000 + CAST(SUBSTRING(loan_id, 2, 2) AS INT) AS orig_year,
+            month_idx({PRE_COVID_CUTOFF}) - month_idx(TRY_CAST(first_payment_date AS INT)) + 1 AS max_obs_age
+        FROM raw_origination
+    ),
+    max_ages AS (
+        SELECT
+            2000 + CAST(SUBSTRING(o.loan_id, 2, 2) AS INT) AS orig_year,
+            MAX(p.loan_age) AS max_age
+        FROM truncated_performance p
+        INNER JOIN raw_origination o ON p.loan_id = o.loan_id
+        GROUP BY orig_year
+    ),
+    age_grid AS (
+        SELECT m.orig_year, UNNEST(GENERATE_SERIES(0, m.max_age)) AS loan_age
+        FROM max_ages m
+    )
     SELECT
-        d.orig_year,
-        d.loan_age,
-        d.new_defaults_at_age,
-        SUM(d.new_defaults_at_age) OVER (
-            PARTITION BY d.orig_year ORDER BY d.loan_age
-        ) AS cumulative_defaults,
-        c.loans_originated,
-        ROUND(SUM(d.new_defaults_at_age) OVER (
-            PARTITION BY d.orig_year ORDER BY d.loan_age
-        ) * 100.0 / c.loans_originated, 4) AS cumulative_default_rate_pct
-    FROM v_defaults_by_age d
-    INNER JOIN v_vintage_loan_counts c USING (orig_year);
+        g.orig_year,
+        g.loan_age,
+        COUNT(l.loan_id) AS observable_loans
+    FROM age_grid g
+    LEFT JOIN loan_max_obs l 
+      ON g.orig_year = l.orig_year AND l.max_obs_age >= g.loan_age
+    GROUP BY g.orig_year, g.loan_age;
+
+    CREATE OR REPLACE VIEW v_vintage_curves AS
+    WITH base_hazard AS (
+        SELECT
+            d.orig_year,
+            d.loan_age,
+            d.new_defaults_at_age,
+            o.observable_loans,
+            SUM(d.new_defaults_at_age) OVER (
+                PARTITION BY d.orig_year ORDER BY d.loan_age
+            ) AS cumulative_defaults,
+            c.loans_originated,
+            CASE 
+                WHEN o.observable_loans > 0 
+                THEN d.new_defaults_at_age * 1.0 / o.observable_loans 
+                ELSE 0.0 
+            END AS monthly_hazard
+        FROM v_defaults_by_age d
+        INNER JOIN v_vintage_loan_counts c USING (orig_year)
+        INNER JOIN v_vintage_observable_counts o USING (orig_year, loan_age)
+    )
+    SELECT
+        orig_year,
+        loan_age,
+        new_defaults_at_age,
+        observable_loans,
+        cumulative_defaults,
+        loans_originated,
+        ROUND(monthly_hazard * 100.0, 4) AS monthly_hazard_pct,
+        ROUND((1.0 - EXP(SUM(LN(GREATEST(1.0 - monthly_hazard, 0.000001))) OVER (
+            PARTITION BY orig_year ORDER BY loan_age
+        ))) * 100.0, 4) AS cumulative_default_rate_pct
+    FROM base_hazard;
     """)
-    print("[Vintages] v_vintage_curves view created successfully.")
+    print("[Vintages] v_vintage_curves view created successfully with observable denominators.")
 
 def build_ecl_snapshot(con: duckdb.DuckDBPyConnection, snapshot_period: int = ECL_SNAPSHOT_PERIOD):
     """

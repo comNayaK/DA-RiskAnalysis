@@ -190,6 +190,12 @@ def generate_headline_and_gate7():
     ecl_non_s3 = tot_headline - ecl_s3
     tot_regime = (ecl_non_s3 * 0.88) + ecl_s3
 
+    # 8. 2019 Realized Clean PD Sensitivity (0.1163% vs 0.1560% Policy Choice)
+    # At 201912 snapshot, 0.1163% was known; using 0.1560% is a conservative policy choice.
+    pd_realized_clean = pd_map.copy()
+    pd_realized_clean["Pop 1: Current (Clean)"] = 0.00116271  # 218 / 187,493
+    tot_realized_clean, det_realized_clean = calc_grid_ecl(pd_realized_clean, PARAMS["lgd_p1_headline_48m"], PARAMS["lgd_p2_base"], PARAMS["lgd_p3_headline"])
+
     print("=========================================================================================================================")
     print("                                   POLICY SCENARIO SENSITIVITY GRID (FROM ecl_snapshot)                                  ")
     print("=========================================================================================================================")
@@ -200,6 +206,7 @@ def generate_headline_and_gate7():
     print(f"5. Alternative Cohort (4,606):      ${tot_alt:>12,.2f} | Delta vs Cal Base: +${tot_alt - tot_cal_base:>10,.2f} (+{(tot_alt - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"6. Censor Upper Bound (16.28% LGD): ${tot_upper:>12,.2f} | Delta vs Cal Base: +${tot_upper - tot_cal_base:>10,.2f} (+{(tot_upper - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"7. Regime-Calibrated (0.88x non-S3):${tot_regime:>12,.2f} | Delta vs Headline: -${tot_headline - tot_regime:>10,.2f} (-{(tot_headline - tot_regime)/tot_headline*100:5.2f}%)")
+    print(f"8. 2019 Realized Clean PD (0.116%): ${tot_realized_clean:>12,.2f} | Delta vs Headline: -${tot_headline - tot_realized_clean:>10,.2f} (-{(tot_headline - tot_realized_clean)/tot_headline*100:5.2f}%) [Policy Sensitivity]")
     print("=========================================================================================================================")
 
     return df_master, total_ecl
