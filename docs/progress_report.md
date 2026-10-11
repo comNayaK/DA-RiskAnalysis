@@ -4,7 +4,7 @@
 **Model Purpose:** Internal Credit Risk Modeling & Staged Provisioning Engine (Phases 1–3)  
 **Reporting Snapshot:** December 2019 (`201912`)  
 **Data Scope:** 7 Multi-Vintage Cohorts (2010–2016), 350,000 Freddie Mac Sample Originations, 26,027,039 Performance Rows, $28.71B Active UPB  
-**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $51.8M), not a definitive validated point estimate. Crucially, the model's uncalibrated backtest over-predicts 2019 realized defaults by roughly 12%; a regime-calibrated scenario scaling non-Stage-3 ECL by ~0.88 pulls the headline provision toward **~$41.7M – $41.8M**. Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
+**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $52.0M), not a definitive validated point estimate. Crucially, the model's uncalibrated backtest over-predicts 2019 realized defaults by roughly 12%; a regime-calibrated scenario scaling non-Stage-3 ECL by ~0.88 pulls the headline provision toward **~$41.7M – $41.8M**. Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
 
 ---
 
@@ -43,7 +43,7 @@ The engine replaces naive historical accounting heuristics with an **absorbing M
 |---|---|---|---|
 | **Portfolio ECL Scenario** | $35,797,234.15 (Calibrated Baseline) | **$45,073,225.70** (Headline Scenario @ 0.1560% Clean PD)<br>*(Sensitivity @ 0.1600%: $45,228,278.45)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~12% |
 | **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Dual Gate Rule: 🔴 FAIL / RED**<br>Total: $Z = -3.94\sigma$, Error = 11.0% | Model fails fixed ex-ante gate ($|z| > 2$ OR Error > 15%); over-predicts benign 2019 regime |
-| **LGD Framework** | 16.70% (Unadjusted Purge) | **14.18%** (Blended Pop 1 with 48m Tail)<br>*(36m Horizon: 14.00% with 2.50% Tail)* | Derived on dollar-weighted first default basis (33.24% mod share, 43.0% re-default) |
+| **LGD Framework** | 11.50% (Base Resolved Censor Lower) | **14.18%** (Blended Pop 1 with 48m Tail)<br>*(36m Horizon: 14.00% with 2.50% Tail)* | Derived on dollar-weighted first default basis (33.24% mod share, 43.0% re-default) |
 | **Pop 2 Reserve Burden** | Ignored in single-pop model | **$6,103,778.53 (13.54% of total ECL)**<br>*(13.50% at 0.1600% clean PD)* | 1.16% of UPB drives ~13.5% of post-probation provisions; tail double-counting avoided |
 | **Data Integrity Audit** | Legacy column shifts | **0 Quarantine Rows (0.000%)** | Passes raw positive & negative shift assertions on flat files |
 
@@ -139,7 +139,7 @@ To avoid post-hoc bias where tolerance bands are widened to pass a failing model
 $$\text{\textbf{Dual Acceptance Gate: Fail if either test fails: }} |z| > 2.0 \quad \text{\textbf{OR}} \quad |\text{Relative Error}| > 15\%$$
 This rule is evaluated **per risk state** and for the **portfolio total**.
 
-* **House Convention & Overdispersion Note:** The 15% relative error threshold is an internal **house convention / engineering heuristic**, not a regulatory standard. In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering (overdispersion relative to theoretical independent Poisson/binomial trials). On large portfolios ($N \approx 195,000$), a pure $Z$-score will trigger statistical rejection on economically immaterial deviations. Pairing a 15% percentage error tolerance with the statistical $Z$-score prevents premature rejection driven solely by large-sample sensitivity, while the dual requirement ensures that models exhibiting severe statistical drift or large percentage errors fail.
+* **House Convention & Overdispersion Note:** The 15% relative error threshold is an internal **house convention / engineering heuristic**, not a regulatory standard. In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering, violating trial independence and generating overdispersion ($\text{Var}(D) = \phi \cdot n p (1-p)$ with variance inflation factor $\phi > 1$). Under standard unadjusted binomial testing ($\phi = 1$), standard errors compress artificially on large portfolios ($N \approx 195,000$), causing pure $Z$-scores to reject models on economically modest deviations. Pairing a 15% materiality threshold with the statistical $Z$-score operates across two distinct sample regimes: on large cohorts ($N \approx 195,000$), the 15% limit benchmarks economic materiality; on thin delinquency buckets (e.g., Pop 2 30 DPD, $N = 115$), the $Z$-score filters random sampling noise. Under the conservative house rule ("Fail if either $|z| > 2.0$ OR $|\text{Rel Error}| > 15\%$"), Specification D fails on statistical significance ($Z = -3.94\sigma$) despite passing the 15% materiality tolerance (11.0% error). For production implementation (Gate 8), model governance should either calibrate a formal empirical variance inflation factor ($\phi > 1$) to account for mortgage clustering, or formalize a true joint significance-and-materiality rule requiring both conditions ($|z| > 2.0$ AND $|\text{Rel Error}| > 15\%$) for aggregate portfolio rejection.
 
 ### Out-of-Sample Scoring Across Specifications (Parameters Frozen $\le 201812$)
 We evaluate four specifications across the **194,925 active snapshot loans** at 201812 evaluated over calendar year 2019 (realized defaults = **912**):
@@ -288,28 +288,14 @@ Rather than presenting a single point estimate, the engine's output is framed as
 
 | Scenario Description | Pop 1 LGD | Pop 2 LGD | Stage 1 Clean PD | Probation PD | Total Portfolio ECL | Reserve Delta ($\Delta$) | Comparison Baseline |
 |---|---|---|---|---|---|---|---|
-| **Purge Baseline (Legacy)** | 16.70% | 16.70% | 0.255% | None | **$31,684,210.15** | Reference | Unadjusted purge model |
-| **Calibrated Baseline (No Probation)** | 14.18% | 11.50% | 0.1560% | None | **$35,797,234.15** | +$4.11M (+12.98%) | Against Purge ($31.68M) |
-| *Calibrated Baseline @ 0.1600%* | 14.18% | 11.50% | 0.1600% | None | **$35,692,456.41** | +$4.01M (+12.65%) | Against Purge ($31.68M) |
-| **Uncalibrated Base (No Probation)** | 14.18% | 11.50% | 0.2180% | None | **$38,262,034.68** | +$6.58M (+20.76%) | Against Purge ($31.68M) |
-| *Uncalibrated Base @ 0.1600%* | 14.18% | 11.50% | 0.2180% | None | **$36,945,042.69** | +$5.26M (+16.60%) | Against Purge ($31.68M) |
-| **36m Tail Scenario (14.00% LGD)** | **14.00%** | **11.50%** | **0.1560%** | **9.510%** | **$44,578,548.07** | **+$8.78M (+24.52%)** | Against Cal Base ($35.80M) |
-| *36m Tail Scenario @ 0.1600%* | 14.00% | 11.50% | 0.1600% | 9.510% | **$44,709,367.57** | +$9.02M (+25.26%) | Against Cal Base ($35.69M) |
-| **HEADLINE SCENARIO (48m Tail)** | **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$45,073,225.70** | **+$9.28M (+25.91%)** | Against Cal Base ($35.80M) |
-| *Headline Scenario @ 0.1600%* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,228,278.45** | +$9.54M (+26.75%) | Against Cal Base ($35.69M) |
-| **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,753.92** | +$9.85M (+27.52%) | Against Cal Base ($35.80M) |
-| *Alternative Cohort @ 0.1600%* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,804,562.13** | +$10.11M (+28.33%) | Against Cal Base ($35.69M) |
-| **Sensitivity: Censor Upper Bound** | 16.21% | 13.60% | 0.1560% | 9.510% | **$51,766,668.25** | +$15.97M (+44.61%) | Against Cal Base ($35.80M) |
-| *Censor Upper (48m Tail @ 16.28%)* | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,960,119.86** | +$16.16M (+45.14%) | Against Cal Base ($35.80M) |
-| *Prior Draft Censor Upper (Legacy)*| 16.21% | 13.60% | 0.1600% | 9.510% | **$52,652,915.71** | +$16.96M (+47.52%) | Against Cal Base ($35.69M) |
+| **Calibrated Baseline (No Probation)** | 14.18% | 11.50% | 0.1560% | None | **$35,797,234.15** | Reference Baseline | Clean performing baseline without probation |
+| **Uncalibrated Base (No Probation)** | 14.18% | 11.50% | 0.2180% | None | **$38,262,034.68** | +$2.46M (+6.89%) | Against Calibrated Base ($35.80M) |
+| **36m Tail Sensitivity (14.00% LGD)** | **14.00%** | **11.50%** | **0.1560%** | **9.510%** | **$44,578,548.07** | **+$8.78M (+24.53%)** | Against Calibrated Base ($35.80M) |
+| **HEADLINE SCENARIO (48m Tail)** | **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$45,073,225.70** | **+$9.28M (+25.91%)** | Against Calibrated Base ($35.80M) |
+| *Headline Sensitivity @ 0.1600% Clean PD* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,228,278.45** | +$9.43M (+26.35%) | Against Calibrated Base ($35.80M) |
+| **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,753.92** | +$9.85M (+27.52%) | Against Calibrated Base ($35.80M) |
+| **Sensitivity: Censor Upper Bound (16.28% LGD)** | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,959,042.11** | **+$16.16M (+45.15%)** | Against Calibrated Base ($35.80M) |
 | **Regime-Calibrated Scenario (0.88x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,659,823.60** | **~$41.7M – $41.8M** | Scaled non-Stage-3 ECL |
-
-*Explanation of the $886k Censor-Upper Discrepancy:*
-The prior draft's Censor Upper figure of **$52,652,915.71** exceeded the regenerated production figure of **$51,766,668.25** by exactly **$886,247.46 (~$886k)**. Forensic recomputation isolates three structural drivers:
-1. **Clean Baseline PD Shift (+$177,252.35):** Shifting Clean Stage 1 PD from rounded 0.1600% to empirical 0.1560% on $27.34B UPB at 16.21% LGD ($27,336,521,222.18 \times 0.000040 \times 0.1621$).
-2. **Probation Overlap Removal (+$658,971.80):** The earlier $52.65M run used the broader 4,606 probation cohort ($742.80M UPB). Purging the 292 overlapping Pop 2 loans down to the strict 4,314 cohort ($699.34M UPB) removed $43.47M UPB from probation, shifting it from 9.510% probation PD to 0.1560% clean PD at 16.21% LGD.
-3. **Pop 2 Parameter & Floor Alignment (+$50,023.31):** Adjusting Pop 2 Modified to the 10.48% floor and updating delinquent parameters at 13.60% upper LGD.
-Total delta = $\$177,252.35 + \$658,971.80 + \$50,023.31 = \mathbf{\$886,247.46}$.
 
 *Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest by ~11% to 12%** (1,021.2 expected vs 912 actual under Spec A; 1,024.7 under Spec D). If calibrated down to 2019 realized delinquency and default roll rates, scaling non-Stage-3 ECL by ~0.88 pulls the scenario toward **~$41.7M – $41.8M**.
 

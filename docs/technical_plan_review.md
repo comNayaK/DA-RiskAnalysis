@@ -32,7 +32,7 @@
 
 *   **Sensitivity Bounds Over Scalar Points:** Given liquidation follow-up uncertainty in judicial foreclosure states (e.g., NY, NJ, FL), LGD outputs must be reported across empirical bounds rather than as an unjustified single scalar:
     1.  **Censor Lower Bound (11.50% Base):** Assumes unresolved non-performing loans cure with zero loss.
-    2.  **Censor Upper Bound (13.60% Base):** Treats lingering non-performing loans as full liquidations.
+    2.  **Censor Upper Bound (13.60% Base / 16.28% All-In):** Treats lingering non-performing loans as full liquidations (13.60% base + 2.68% 48m tail = 16.28% all-in Pop 1 LGD, yielding $51.96M portfolio ECL).
     3.  **Purge Cohort (16.70% Base):** Baseline from legacy purged panel for benchmark sensitivity.
 *   **Headline Re-Default Tail (48-Month Horizon):**
     *   **Headline Horizon Selection:** The engine adopts the **48-month horizon** as the single headline parameter for portfolio provisioning, with the 36-month horizon retained strictly as an empirical sensitivity.
@@ -79,7 +79,11 @@
     *   This rule is enforced **per risk state** and for the **portfolio total**.
 *   **House Convention Justification & Overdispersion Note:**
     *   The 15% relative error threshold is an internal **house convention / engineering heuristic**, not a regulatory standard.
-    *   *Overdispersion Note:* In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering (overdispersion relative to theoretical independent Poisson/binomial trials). On large portfolios ($N \approx 195,000$), a pure $Z$-score can trigger statistical rejection on economically immaterial shifts. Pairing a 15% percentage error tolerance with the statistical $Z$-score prevents premature rejection driven solely by large-sample sensitivity, while the dual requirement ensures that models exhibiting severe statistical drift or large percentage errors fail.
+    *   *Overdispersion & Joint Rule Rationale:* In residential mortgage portfolios, loan defaults exhibit spatial, regional, and macroeconomic clustering, violating trial independence and generating overdispersion ($\text{Var}(D) = \phi \cdot n p (1-p)$ with variance inflation factor $\phi > 1$). Under standard unadjusted binomial testing ($\phi = 1$), standard errors compress artificially on large portfolios ($N \approx 195,000$), causing pure $Z$-scores to reject models on economically modest deviations.
+    *   *Role of Dual Screening:* In model governance, the two criteria address opposite sample-size regimes:
+        1. On large cohorts ($N \approx 195,000$), where statistical power is near-infinite, the 15% relative error threshold benchmarks economic materiality.
+        2. On thin delinquency buckets (e.g., Pop 2 30 DPD, $N = 115$), where small integer differences create large percentage swings, the $Z$-score evaluates whether discrepancies exceed random sampling variance.
+    *   *Current Engine Application:* Under the strict house convention ("Fail if either $|z| > 2.0$ OR $|\text{Rel Error}| > 15\%$"), the gate acts as an aggressive two-tier tripwire: Specification D fails on statistical significance ($Z = -3.94\sigma$) despite passing the 15% materiality threshold (11.0% error). For production implementation (Gate 8), model governance should either calibrate a formal empirical variance inflation factor ($\phi > 1$) to account for mortgage clustering, or formalize a true joint significance-and-materiality rule requiring both conditions ($|z| > 2.0$ AND $|\text{Rel Error}| > 15\%$) for aggregate portfolio rejection.
 *   **Application to Current Engine (Specification D):**
     *   Portfolio Total: Expected = 1,024.7, Actual = 912.
     *   $Z = -3.94\sigma$ (FAILS $|z| > 2.0$). Relative error = 11.0% (PASSES $\le 15\%$).
@@ -202,7 +206,7 @@ The scope for Phases 1–3 is strictly frozen. The following gate table governs 
 | **Gate 2** | Layer 1 Absorbing Censoring | Censor loans at first modification; `NOT EXISTS` query logic | 1,956 loans censored; zero post-mod transitions in Pop 1 | 🟢 **Done** |
 | **Gate 3** | Two-Factor Bounded LGD & Tail | Discrete hazard chaining; 48m headline (43% re-def $\rightarrow$ 14.18% LGD) & 36m sensitivity | Dollar-weighted first default UPB; explicit liquidation share caveat | 🟢 **Done** |
 | **Gate 4** | Pop 2 Segmentation & Staging | Active modified cohort isolation; double-count LGD protection | Active modified loans isolated; 11.50% base LGD; 10.48% hazard floor | 🟢 **Done** |
-| **Gate 5** | IFRS 9 Probation Staging | 12m probation for recent delinquencies; empirical ex-hurricane lifetime PD | Performing loans with recent delinquency reclassified to Stage 2 | 🟢 **Done** |
+| **Gate 5** | IFRS 9 Probation Staging | 12m probation for recent delinquencies; empirical ex-hurricane lifetime PD | Performing loans with recent delinquency reclassified to Stage 2; dynamic seasoning curves pending | 🟡 **Partial** |
 | **Gate 6** | Out-of-Sample Backtesting | Frozen parameter scoring; transparent offsetting error disclosure | Dual Acceptance Gate: Uncalibrated matrix fails ($Z = -3.94\sigma$, Err = 11.0%) | 🔴 **Done–FAILED** |
 | **Gate 7** | Master Table Reconciliation | Mutually exclusive census; exact row-by-row $\text{UPB} \times \text{PD} \times \text{LGD}$ tie | Exact portfolio UPB and loan count match; penny-accurate ECL sum | 🟢 **Done** |
 | **Gate 8** | Rolling-Origin Backtesting & Dual Gate | Multi-year backtests (2015–2018 snapshots); observable-at-age denominators | Dual Rule: Fail if $|z| > 2.0$ OR error > 15% (per state and total) | ⏸️ **Frozen (Phase 4)** |
