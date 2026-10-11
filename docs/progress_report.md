@@ -63,24 +63,24 @@ The active 201912 portfolio consists of **174,293 unique active loans** (`zero_b
   * Adding Pop 1 30 DPD (1,135), Pop 1 60 DPD (189), Pop 2 Current (675), Pop 2 Modified (1,069), Pop 2 30 DPD (134), Pop 2 60 DPD (86), and Pop 3 Default (682) sums **strictly to 174,293 loans**.
 
 ### Master Table (Headline Scenario: Unified 0.1560% Clean PD, 4,314 Probation Loans, Pop 2 Modified $\ge$ 12m Hazard)
-Every row recomputes exactly as $\text{ECL} = \text{UPB} \times \text{PD} \times \text{LGD}$. The total ECL of **$45,073,225.70** is strictly the sum of all nine rows.
+Every row recomputes exactly as $\text{ECL} = \text{UPB} \times \text{PD} \times \text{LGD}$. The total ECL of **$45,073,223.87** is strictly the sum of all nine rows extracted from `ecl_snapshot`.
 
 | Segment | Stage | Active Loans | Active UPB | Assigned PD | Assigned LGD | Calculated ECL | ECL Share |
 |---|---|---|---|---|---|---|---|
-| **Pop 1: Current (Clean)** | Stage 1 | 166,009 | $27,336,521,222.18 | 0.1560% (Trailing Clean Hist) | 14.18% | $6,047,057.19 | 13.42% |
-| **Pop 1: Current (Probation)** | Stage 2 | 4,314 | $699,337,238.97 | 9.510% (Life Ex-Hurr) | 14.18% | $9,430,688.55 | 20.92% |
-| **Pop 1: 30_DPD** | Stage 2 | 1,135 | $189,879,874.19 | 15.680% (Calibrated Life) | 14.18% | $4,221,834.69 | 9.37% |
-| **Pop 1: 60_DPD** | Stage 2 | 189 | $30,997,278.97 | 60.100% (Calibrated Life) | 14.18% | $2,641,643.91 | 5.86% |
+| **Pop 1: Current (Clean)** | Stage 1 | 166,009 | $27,336,521,237.52 | 0.1560% (Trailing Clean Hist) | 14.18% | $6,047,057.19 | 13.42% |
+| **Pop 1: Current (Probation)** | Stage 2 | 4,314 | $699,337,223.63 | 9.510% (Life Ex-Hurr) | 14.18% | $9,430,688.34 | 20.92% |
+| **Pop 1: 30_DPD** | Stage 2 | 1,135 | $189,879,868.35 | 15.680% (Calibrated Life) | 14.18% | $4,221,834.56 | 9.37% |
+| **Pop 1: 60_DPD** | Stage 2 | 189 | $30,997,284.81 | 60.100% (Calibrated Life) | 14.18% | $2,641,644.41 | 5.86% |
 | **Pop 2: Current** | Stage 2 | 675 | $101,614,965.47 | 12.240% (Proxy Life) | 11.50% | $1,430,332.25 | 3.17% |
-| **Pop 2: Modified (Clean)** | Stage 2 | 1,069 | $201,229,039.43 | 10.480% (Floor = 12m Hazard) | 11.50% | $2,425,214.38 | 5.38% |
+| **Pop 2: Modified (Clean)** | Stage 2 | 1,069 | $201,229,039.43 | 10.480% (Floor = 12m Hazard) | 11.50% | $2,425,212.38 | 5.38% |
 | **Pop 2: 30_DPD** | Stage 2 | 134 | $19,034,568.03 | 51.500% (Pooled Historical) | 11.50% | $1,127,322.29 | 2.50% |
 | **Pop 2: 60_DPD** | Stage 2 | 86 | $12,261,970.10 | 79.490% (Pooled Historical) | 11.50% | $1,120,909.60 | 2.49% |
 | **Pop 3: Active Default** | Stage 3 | 682 | $117,265,323.23 | 100.000% | 14.18% | $16,628,222.83 | 36.89% |
-| **TOTAL PORTFOLIO** | | **174,293** | **$28,708,141,480.57** | | | **$45,073,225.70** | **100.00%** |
+| **TOTAL PORTFOLIO** | | **174,293** | **$28,708,141,480.57** | | | **$45,073,223.87** | **100.00%** |
 
 * **Unification on 0.1560% Clean PD:** The Clean Stage 1 PD is unified to **0.1560%** across both the Master Table and out-of-sample backtest (derived from 323 defaults / 207,061 clean loans in the trailing 201712 $\rightarrow$ 2018 window).
 * **Rounded 0.1600% Sensitivity:** In earlier development drafts, the rounded rate of **0.1600%** was shown, yielding Pop 1 Clean ECL of $6,202,109.93, a portfolio total of **$45,228,278.45**, and Pop 2 ECL of **$6,103,778.53 (13.50%)**. The delta between 0.1560% and 0.1600% is **$155,052.75** (0.34% of portfolio ECL), demonstrating high precision.
-* **Pop 2 Floor Adjustment:** Pop 2 Modified lifetime PD is floored at **10.48%** (matching its observed 12-month hazard floor, adding **+$263,813.27** over the unconstrained 9.34% rate). Pop 2 total ECL equals **$6,103,778.53** (**13.54%** of total ECL at 0.1560% clean PD; **13.50%** at 0.1600%).
+* **Pop 2 Floor Adjustment:** Pop 2 Modified lifetime PD is floored at **10.48%** (matching its observed 12-month hazard floor, adding **+$263,813.27** over the unconstrained 9.34% rate). Pop 2 total ECL equals **$6,103,776.53** (**13.54%** of total ECL at 0.1560% clean PD; **13.50%** at 0.1600%).
 
 ---
 
@@ -288,14 +288,14 @@ Rather than presenting a single point estimate, the engine's output is framed as
 
 | Scenario Description | Pop 1 LGD | Pop 2 LGD | Stage 1 Clean PD | Probation PD | Total Portfolio ECL | Reserve Delta ($\Delta$) | Comparison Baseline |
 |---|---|---|---|---|---|---|---|
-| **Calibrated Baseline (No Probation)** | 14.18% | 11.50% | 0.1560% | None | **$35,797,234.15** | Reference Baseline | Clean performing baseline without probation |
-| **Uncalibrated Base (No Probation)** | 14.18% | 11.50% | 0.2180% | None | **$38,262,034.68** | +$2.46M (+6.89%) | Against Calibrated Base ($35.80M) |
-| **36m Tail Sensitivity (14.00% LGD)** | **14.00%** | **11.50%** | **0.1560%** | **9.510%** | **$44,578,548.07** | **+$8.78M (+24.53%)** | Against Calibrated Base ($35.80M) |
-| **HEADLINE SCENARIO (48m Tail)** | **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$45,073,225.70** | **+$9.28M (+25.91%)** | Against Calibrated Base ($35.80M) |
+| **Calibrated Baseline (No Probation)** | 14.18% | 11.50% | 0.1560% | None | **$35,797,234.52** | Reference Baseline | Clean performing baseline without probation |
+| **Uncalibrated Base (No Probation)** | 14.18% | 11.50% | 0.2180% | None | **$38,262,035.05** | +$2.46M (+6.89%) | Against Calibrated Base ($35.80M) |
+| **36m Tail Sensitivity (14.00% LGD)** | **14.00%** | **11.50%** | **0.1560%** | **9.510%** | **$44,578,548.23** | **+$8.78M (+24.53%)** | Against Calibrated Base ($35.80M) |
+| **HEADLINE SCENARIO (48m Tail)** | **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$45,073,223.87** | **+$9.28M (+25.91%)** | Against Calibrated Base ($35.80M) |
 | *Headline Sensitivity @ 0.1600% Clean PD* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,228,278.45** | +$9.43M (+26.35%) | Against Calibrated Base ($35.80M) |
-| **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,753.92** | +$9.85M (+27.52%) | Against Calibrated Base ($35.80M) |
-| **Sensitivity: Censor Upper Bound (16.28% LGD)** | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,959,042.11** | **+$16.16M (+45.15%)** | Against Calibrated Base ($35.80M) |
-| **Regime-Calibrated Scenario (0.88x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,659,823.60** | **~$41.7M – $41.8M** | Scaled non-Stage-3 ECL |
+| **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,754.29** | +$9.85M (+27.52%) | Against Calibrated Base ($35.80M) |
+| **Sensitivity: Censor Upper Bound (16.28% LGD)** | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,959,042.29** | **+$16.16M (+45.15%)** | Against Calibrated Base ($35.80M) |
+| **Regime-Calibrated Scenario (0.88x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,659,823.74** | **~$41.7M – $41.8M** | Scaled non-Stage-3 ECL |
 
 *Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest by ~11% to 12%** (1,021.2 expected vs 912 actual under Spec A; 1,024.7 under Spec D). If calibrated down to 2019 realized delinquency and default roll rates, scaling non-Stage-3 ECL by ~0.88 pulls the scenario toward **~$41.7M – $41.8M**.
 

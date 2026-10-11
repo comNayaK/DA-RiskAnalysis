@@ -192,6 +192,12 @@ def build_vintage_curve_views(con: duckdb.DuckDBPyConnection):
         FROM truncated_performance p
         INNER JOIN raw_origination o ON p.loan_id = o.loan_id
         WHERE p.loan_state = 'Default'
+          AND NOT EXISTS (
+              SELECT 1 FROM raw_performance rp
+              WHERE rp.loan_id = o.loan_id
+                AND CAST(rp.monthly_reporting_period AS INT) <= {PRE_COVID_CUTOFF}
+                AND COALESCE(rp.modification_flag, '') IN ('Y', 'P')
+          )
         GROUP BY orig_year, p.loan_age
     )
     SELECT
