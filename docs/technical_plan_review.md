@@ -15,7 +15,7 @@
     *   `modification_flag = 'Y'`: Loan modified in the **current monthly reporting period**.
     *   `modification_flag = 'P'`: Loan modified in a **prior reporting period** (permanent previous modification).
     *   Both values indicate an active modified status and must trigger Layer 1 censoring and Pop 2 segmentation.
-*   **SQL Anti-Pattern Fix (`NOT IN` $\rightarrow$ `NOT EXISTS`):** All population segmentation, cohort identification, and transition extraction queries must strictly utilize `NOT EXISTS` or anti-joins instead of `NOT IN`. A single `NULL` value in a subquery target column causes standard SQL three-valued logic (`UNKNOWN`) to fail the predicate for all candidate records, silently producing empty result sets or corrupted loan classification.
+*   **SQL Anti-Pattern Fix (`NOT IN` $\rightarrow$ `NOT EXISTS`):** All population segmentation, cohort identification, and transition extraction queries across `src/` and the committed production reproduction scripts (`scratch/regenerate_grid.py`, `scratch/reproduce_vintage_curves.py`, `scratch/extract_14_loans.py`, `scratch/reproduce_backtest.py`, `scratch/test_prod_backtest.py`) must strictly utilize `NOT EXISTS` or anti-joins instead of `NOT IN`. A single `NULL` value in a subquery target column causes standard SQL three-valued logic (`UNKNOWN`) to fail the predicate for all candidate records, silently producing empty result sets or corrupted loan classification. (Non-production historical scratch exploratory scripts outside the committed reproduction suite are excluded from this production code gate).
 *   **Reconciliation of 1,970 vs 1,956 Modified Loans:**
     *   *Raw Data Census:* In `raw_performance`, exactly **1,970 unique loans** exhibit a modification flag (`modification_flag IN ('Y', 'P')`) on or before the pre-COVID cutoff date (`202002`).
     *   *Layer 1 Censored Census:* In `clean_monthly_performance`, exactly **1,956 unique loans** are assigned `loan_state = 'Modified'`.
@@ -137,20 +137,20 @@
         | **2015** | 60 | 0 | 3,064 | 637 | 0.0000% | **1.3382%** | Seasoned (Month 60) |
         | **2016** | 24 | 15 | 49,995 | 330 | 0.0300% | **0.6580%** | Peak Hazard |
         | **2016** | 48 | 0 | 3,524 | 546 | 0.0000% | **1.1708%** | Censored Plateau |
-    *   *Empirical 6-Month-Binned Hazards (Months 1–60 Across All Vintages):*
-        | Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Binned Hazard % |
+    *   *Empirical 6-Month-Binned Incidence (Months 1–60 Across All Vintages, Exposure = $\sum \text{Observable} / 6$):*
+        | Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Incidence % |
         |---|---|---|---|
         | **01–06m** | 181 | 349,997 | **0.0517%** |
-        | **07–12m** | 450 | 349,996 | **0.1286%** |
+        | **07–12m** | 450 | 349,997 | **0.1286%** |
         | **13–18m** | 699 | 349,994 | **0.1997%** |
         | **19–24m** | 677 | 349,990 | **0.1934%** |
         | **25–30m** | 666 | 349,981 | **0.1903%** |
         | **31–36m** | 596 | 349,952 | **0.1703%** |
         | **37–42m** | 543 | 339,417 | **0.1600%** |
         | **43–48m** | 455 | 314,061 | **0.1449%** |
-        | **49–54m** | 395 | 289,575 | **0.1364%** |
-        | **55–60m** | 320 | 308,187 | **0.1038%** |
-    *   *Empirical Shape Verification:* Grouping empirical default hazards into 6-month bins shows that default hazard accelerates rapidly from 0.0517% in months 1–6 to peak in months 13–30 (spanning 0.190%–0.200%), after which it steadily decelerates across months 31–60 (declining to 0.1038% in months 55–60).
+        | **49–54m** | 395 | 289,539 | **0.1364%** |
+        | **55–60m** | 320 | 264,160 | **0.1211%** |
+    *   *Empirical Shape Verification:* Grouping empirical default incidence into 6-month bins shows that default incidence accelerates rapidly from 0.0517% in months 1–6 to peak in months 13–30 (spanning 0.190%–0.200%), after which it steadily decelerates across months 31–60 (declining to 0.1211% in months 55–60).
 *   **Rigorous Transition Count Reconciliation:**
     *   Transition matrix auditing compares the sum of matrix transition counts ($C_{\text{portfolio}}$) directly against the exact row count of `loan_level_transitions` (verifying all 18,587,123 rows match exactly).
     *   *Extraction Query Generating 18,587,123 Rows (Abridged Logic):*

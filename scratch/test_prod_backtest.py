@@ -14,10 +14,13 @@ def run_prod_backtest():
         FROM clean_monthly_performance p
         WHERE p.monthly_reporting_period = 201812 AND p.loan_state = 'Current' AND p.zero_balance_code IS NULL
           -- Exclude Pop 2 loans (modified or defaulted <= 201812)
-          AND p.loan_id NOT IN (
-              SELECT loan_id FROM clean_monthly_performance WHERE monthly_reporting_period <= 201812 AND loan_state IN ('Modified', 'Default')
-              UNION
-              SELECT loan_id FROM raw_performance WHERE COALESCE(modification_flag, '') IN ('Y', 'P') AND CAST(monthly_reporting_period AS INT) <= 201812
+          AND NOT EXISTS (
+              SELECT 1 FROM clean_monthly_performance p2 
+              WHERE p2.loan_id = p.loan_id AND p2.monthly_reporting_period <= 201812 AND p2.loan_state IN ('Modified', 'Default')
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM raw_performance rp 
+              WHERE rp.loan_id = p.loan_id AND COALESCE(rp.modification_flag, '') IN ('Y', 'P') AND CAST(rp.monthly_reporting_period AS INT) <= 201812
           )
     ),
     hist_18 AS (

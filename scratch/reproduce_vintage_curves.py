@@ -77,12 +77,11 @@ def reproduce_vintage_curves():
     print("=========================================================================================================================\n")
 
     print("=========================================================================================================================")
-    print("                      4. EMPIRICAL 6-MONTH-BINNED HAZARDS (MONTHS 1 TO 60)                                              ")
+    print("                      4. EMPIRICAL 6-MONTH-BINNED INCIDENCE (MONTHS 1 TO 60)                                            ")
     print("=========================================================================================================================")
     q_binned = """
     WITH binned AS (
         SELECT 
-            orig_year,
             CASE 
                 WHEN loan_age BETWEEN 1 AND 6 THEN '01-06m'
                 WHEN loan_age BETWEEN 7 AND 12 THEN '07-12m'
@@ -96,26 +95,25 @@ def reproduce_vintage_curves():
                 WHEN loan_age BETWEEN 55 AND 60 THEN '55-60m'
                 ELSE '60m+'
             END AS age_bin,
-            SUM(new_defaults_at_age) AS bin_defaults,
-            AVG(observable_loans) AS avg_obs_loans
+            new_defaults_at_age,
+            observable_loans
         FROM v_vintage_curves
         WHERE loan_age BETWEEN 1 AND 60
-        GROUP BY orig_year, age_bin
     )
     SELECT 
         age_bin,
-        SUM(bin_defaults) AS total_defaults,
-        AVG(avg_obs_loans) * 7 AS total_obs_loans,
-        ROUND(SUM(bin_defaults) * 100.0 / (AVG(avg_obs_loans) * 7), 4) AS binned_hazard_pct
+        SUM(new_defaults_at_age) AS total_defaults,
+        ROUND(SUM(observable_loans) * 1.0 / 6.0, 0) AS exposure,
+        ROUND(SUM(new_defaults_at_age) * 100.0 / (SUM(observable_loans) * 1.0 / 6.0), 4) AS incidence_pct
     FROM binned
     GROUP BY age_bin
     ORDER BY age_bin;
     """
     binned_rows = con.execute(q_binned).fetchall()
-    print("| Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Binned Hazard % |")
+    print("| Age Bin (Months) | 6-Month Defaults | Observable Exposure | 6-Month Incidence % |")
     print("|---|---|---|---|")
     for b in binned_rows:
-        print(f"| **{b[0]}** | {b[1]:,d} | {b[2]:,.0f} | **{b[3]:.4f}%** |")
+        print(f"| **{b[0]}** | {b[1]:,d} | {int(b[2]):,d} | **{b[3]:.4f}%** |")
     print("=========================================================================================================================")
 
 if __name__ == "__main__":

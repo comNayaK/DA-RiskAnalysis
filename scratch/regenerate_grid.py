@@ -187,10 +187,10 @@ def generate_headline_and_gate7():
     # 6. Censor Upper Bound (16.28% Pop 1 / 13.60% Pop 2 LGD)
     tot_upper, det_upper = calc_grid_ecl(pd_map, PARAMS["lgd_p1_censor_upper"], PARAMS["lgd_p2_upper"], PARAMS["lgd_p3_upper"])
 
-    # 7. Regime-Calibrated Scenario (scaling non-Stage-3 provisions by 0.87)
+    # 7. Regime-Calibrated Scenario (scaling non-Stage-3 provisions by 0.885)
     ecl_s3 = df_master.loc[df_master["segment"]=="Pop 3: Active Default", "ECL"].values[0]
     ecl_non_s3 = tot_headline - ecl_s3
-    tot_regime = (ecl_non_s3 * 0.87) + ecl_s3
+    tot_regime = (ecl_non_s3 * 0.885) + ecl_s3
 
     # 8. 2019 Realized Clean PD Sensitivity (0.1163% vs 0.1560% Policy Choice)
     # At 201912 snapshot, 0.1163% was known; using 0.1560% is a conservative policy choice.
@@ -207,7 +207,7 @@ def generate_headline_and_gate7():
     print(f"4. HEADLINE SCENARIO (48m Tail):    ${tot_headline:>12,.2f} | Delta vs Cal Base: +${tot_headline - tot_cal_base:>10,.2f} (+{(tot_headline - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"5. Alternative Cohort (4,606):      ${tot_alt:>12,.2f} | Delta vs Cal Base: +${tot_alt - tot_cal_base:>10,.2f} (+{(tot_alt - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"6. Censor Upper Bound (16.28% LGD): ${tot_upper:>12,.2f} | Delta vs Cal Base: +${tot_upper - tot_cal_base:>10,.2f} (+{(tot_upper - tot_cal_base)/tot_cal_base*100:5.2f}%)")
-    print(f"7. Regime-Calibrated (0.87x non-S3):${tot_regime:>12,.2f} | Delta vs Headline: -${tot_headline - tot_regime:>10,.2f} (-{(tot_headline - tot_regime)/tot_headline*100:5.2f}%)")
+    print(f"7. Regime-Calibrated (0.885x non-S3):${tot_regime:>11,.2f} | Delta vs Headline: -${tot_headline - tot_regime:>10,.2f} (-{(tot_headline - tot_regime)/tot_headline*100:5.2f}%)")
     print(f"8. 2019 Realized Clean PD (0.116%): ${tot_realized_clean:>12,.2f} | Delta vs Headline: -${tot_headline - tot_realized_clean:>10,.2f} (-{(tot_headline - tot_realized_clean)/tot_headline*100:5.2f}%) [Policy Sensitivity]")
     print("=========================================================================================================================")
 
