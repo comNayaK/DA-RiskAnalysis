@@ -213,6 +213,24 @@ and Pop 2 delinquent states (+44.4%, +16.0%) to over-predict. Under the stricter
 * **130.0 Expected:** The uncalibrated multi-vintage 12-month transition matrix yields a 12m default probability of **59.09%**. Applied to the 220 active loans, $220 \times 0.5909 = \mathbf{130.0}$ expected defaults ($Z = +0.82\sigma$).
 * **115.7 Expected (Prior Draft):** The earlier draft mistakenly applied the uncalibrated *lifetime* PD of **52.59%** ($220 \times 0.5259 = 115.7$). A lifetime PD should never feed a 12-month backtest. Using the true 12-month matrix probability (59.09%) correctly yields 130.0 expected defaults.
 
+### Rolling-Origin Results (Snapshots 201512–201812)
+
+To evaluate whether the 2019 backtest failure represents an isolated single-year regime anomaly or structural model bias, a rolling-origin out-of-time backtest was executed across four consecutive annual snapshots (201512, 201612, 201712, and 201812). For each snapshot $T$, all parameters were strictly frozen on data observed on or before $T$, scoring 12-month realized outcomes over the subsequent calendar year ($T+1$). Scored under the locked ex-ante rule ($\text{Fail if EITHER } |z| > 2.0 \text{ OR } |\text{Rel Error}| > 15\%$):
+
+| Snapshot | Outcome Year | Active Loans | Realized Defaults | Expected Defaults | Aggregate $Z$-Score | Relative Error | State-Level Breaches | Locked Rule Verdict |
+|---|---|---|---|---|---|---|---|---|
+| **201512** | **2016** | 215,270 | 843 | 952.5 | **-3.87σ** | **+11.5%** | 2 states (Pop 1 Clean, Pop 2 30 DPD) | 🔴 **FAIL** |
+| **201612** | **2017** | 233,615 | 1,366 | 981.3 | **+13.61σ** | **-39.2%** | 4 states (Pop 1 Clean, 30 DPD; Pop 2 30, 60 DPD) | 🔴 **FAIL** |
+| **201712** | **2018** | 214,259 | 1,011 | 1,463.4 | **-13.15σ** | **+30.9%** | 6 states (Pop 1 Clean, Prob; Pop 2 All) | 🔴 **FAIL** |
+| **201812** | **2019** | 194,925 | 912 | 1,031.0 | **-4.15σ** | **+11.5%** | 3 states (Pop 1 Clean, Pop 2 30, 60 DPD) | 🔴 **FAIL** |
+| **Pooled** | **2016–2019** | **858,069** | **4,132** | **4,428.1** | **N/A** | **+6.7%** | **All Snapshots Breach** | 🔴 **FAIL** |
+
+**Empirical Findings Without Spin:**
+1. **Not Uniform Over-Prediction:** The model does not over-predict in every calendar year. In 2017, the model severely **under-predicted** defaults by -39.2% ($Z = +13.61\sigma$, 1,366 actual vs 981.3 expected), driven by the unmodeled catastrophic 2017 Atlantic hurricane season (Harvey/Irma).
+2. **Expansionary Over-Prediction:** In benign credit expansion years (2016 and 2019), the model over-predicts actual defaults by exactly +11.5% ($Z = -3.87\sigma$ and $Z = -4.15\sigma$).
+3. **Trailing Shock Extrapolation:** In 2018, the trailing clean PD absorbed the 2017 storm spike (0.3004% clean PD), mechanically extrapolating disaster default rates into a normalized year and causing severe over-prediction (+30.9%, $Z = -13.15\sigma$).
+4. **Governance Conclusion:** Under the locked acceptance rule, **every single snapshot fails** both aggregate and state-level standards. The diagnostics indicate that the failure is not merely a 2019 regime artifact, but a consequence of unconditioned Markov matrices that lack macroeconomic and disaster screening overlays.
+
 ---
 
 ## 6. LGD Framework: 36m vs 48m Re-Default Tail & Pop 2 Analysis

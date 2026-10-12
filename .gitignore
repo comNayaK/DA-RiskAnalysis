@@ -7,3 +7,4 @@ output/*
 !output/*.txt
 !output/*.md
 .DS_Store
+scratch/archive/

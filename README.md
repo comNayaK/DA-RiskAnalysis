@@ -1,95 +1,123 @@
 # Residential Mortgage Credit Risk Engine (Phases 1–3)
 
-An institutional-grade credit risk modeling and portfolio provisioning engine developed for GCC risk analytics contexts (e.g., Barclays, JPMC, Standard Chartered). 
+An econometric credit risk modeling and staged provisioning engine developed on multi-vintage prime residential mortgage cohorts from Freddie Mac Single-Family Loan-Level Datasets.
 
-The engine implements **First-Default Truncation** to enforce absorbing Markov properties, a **Two-Factor Bounded LGD Framework**, **FICO-Stratified Staged ECL Provisioning**, **Multinomial Bootstrapped Uncertainty** (with LGD sensitivity framing), and **Out-of-Sample Backtesting** using **DuckDB** and **NumPy**.
-
----
-
-## 🏛️ Methodological Defenses & Institutional Governance
-
-When presenting or defending this architecture before model validation committees or GCC credit risk technical interviewers:
-
-### 1. The Modification Purge Bias Defense
-* **The Challenge:** *"By dropping all loans with `modification_flag = 'Y'`, you are purging the highest-risk borrowers right before default, systematically deflating default probabilities (PD) and portfolio ECL."*
-* **The Institutional Defense:**
-  1. **Contractual Baseline Model:** This engine models the **pure contractual credit risk** of prime residential mortgages under original underwriting standards.
-  2. **Markov Stationarity & Memorylessness Violation:** In an absorbing Markov chain, treating a loan modification as a normal "cure" back to `Current` introduces non-Markovian history and creates synthetic cures that corrupt transition probabilities.
-  3. **Dual Architecture / TDR Sub-Model:** In Tier-1 bank production environments, modified loans are segregated into a dedicated **Troubled Debt Restructuring (TDR) / Forbearance Sub-Model** with specialized transition matrices, modified cash-flow discount rates, and elevated lifetime default expectations.
-
-### 2. REO Timeline Horizons & Judicial Foreclosure Defense
-* **The Challenge:** *"A 24-month post-default follow-up window is too short for judicial foreclosure states (e.g., NY, NJ, FL) where foreclosure proceedings can take 36 to 48 months. Your LGD will miscalculate unresolved foreclosures."*
-* **The Institutional Defense:**
-  1. **Two-Factor Bounded LGD Framework:** This is precisely why the engine computes a **bounded LGD sensitivity** rather than an unjustified point estimate:
-     $$LGD = P(\text{Liquidation} \mid 90+) \times \text{Loss Severity}$$
-  2. **Upper Bound Treatment:** Unresolved REOs and lingering delinquent loans (`RA` and `Default`) are explicitly tracked as `Still_In_Default` and included in the numerator of $P(\text{liq})_{\text{upper}}$. This accounts for delayed liquidation as a worst-case loss scenario.
-  3. **Dual-Window Cohort Benchmarking:** The engine evaluates both the primary 24-month window ($\le 201712$) and a 36-month sensitivity window ($\le 201612$) to empirically demonstrate how much the bound narrows as judicial resolutions materialize.
+The engine replaces naive accounting heuristics with an **absorbing Markov transition framework**, a **two-factor bounded LGD model with an empirical re-default tail**, a **three-population segmentation (Pop 1 Unmodified, Pop 2 Active Modified, Pop 3 Default)**, and an **IFRS 9 / CECL stage probation mechanism**.
 
 ---
 
-## ⚠️ Known Limitations & Framing
+## ⚠️ Model Governance & "Not Validated" Notice
 
-* **ECL Interval Framing:** The bootstrapped ECL interval is not a pure sampling distribution. Because it incorporates an arbitrary uniform draw between LGD lower and upper bounds, it should be treated as a **sensitivity assumption** mapping the matrix uncertainty combined with LGD bounds.
-* **Single Vintage Limitation:** Analyzing a single vintage (e.g., `2014Q1`) artificially tightens the matrix and hides seasoning effects. Macroeconomic conditioning and true vintage analysis require ingesting multiple cohorts spanning across business cycles (e.g., 2010–2018).
-* **Backtest Directionality:** The backtest results should be treated as an explicit acceptance gate (e.g., traffic-light band). Currently, a TTC homogeneous matrix ignores loan age seasoning, which can systematically underpredict realized defaults. Passing the backtest requires analyzing age-bucketed gaps.
-
----
-
-## ⚙️ Critical Execution Optimizations
-
-This codebase incorporates three critical execution and architecture fixes:
-
-1. **FICO-Stratified ECL Vectorization (Section 4.4):**
-   * *Problem:* Applying a single portfolio-wide Markov PD to the snapshot and grouping by FICO merely shows exposure-weighted portfolio averages.
-   * *Resolution:* The engine builds segmented absorbing Markov matrices for each FICO band (`High-FICO`, `Mid-FICO`, `Lower-FICO`), extracts band-specific 12-month and Lifetime PD vectors, and maps them to each individual loan before ECL calculation.
-2. **High-Speed DuckDB 3D Tensor Construction (Section 5.2):**
-   * *Problem:* Constructing an $(n\_loans, 3, 5)$ transition count tensor via Python/Pandas `iterrows()` over millions of rows causes CPU throttling and Out-Of-Memory (OOM) crashes.
-   * *Resolution:* Pushes transition count aggregation down into DuckDB first (`GROUP BY loan_id, state_t, state_t_plus_1`), then performs vectorized index population directly into a dense NumPy array.
-3. **Padded 32-Column Freddie Mac Schema (Section 2.1):**
-   * *Problem:* Modern Freddie Mac flat files contain 32 pipe-delimited columns. Using legacy 26/28-column schemas with `header=False` triggers hard DuckDB parsing errors.
-   * *Resolution:* Both `ORIG_COLUMNS_32` and `PERF_COLUMNS_32` explicitly define all 32 fields.
+> **IMPORTANT NOTICE:** This repository contains an **internal model development draft** and sensitivity analysis. It has **NOT been independently validated** by an uninvolved Model Risk Management (MRM) function, external auditors, or regulatory review teams under Federal Reserve SR 11-7, OCC 2011-12, or EBA guidelines. Self-development analysis cannot constitute independent validation. 
+> 
+> The engine is **NOT claimed as production-ready, validated, or regulatory-compliant**. The reported figures (headline ECL of ~$45.07M / $45.23M sensitivity, illustrative scaling of ~$41.80M, and upper bound of ~$51.96M) represent development sensitivity scenarios within an empirical range ($35.80M – $52.00M), not certified provisioning requirements. Crucially, the model **fails its locked ex-ante backtesting acceptance gate** across out-of-time evaluation windows. Scope for Phases 1–3 is strictly frozen.
 
 ---
 
-## 📁 Repository Structure
+## 📚 Core Documentation
 
-```
-├── data/                  # Freddie Mac raw pipe-delimited files (.txt)
-├── src/
-│   ├── config.py          # State space, FICO bands, temporal cutoffs & schemas
-│   ├── db.py              # DuckDB connection & month_idx integer-division macro
-│   ├── ingestion.py       # Section 0 pre-run audit & Layer 0 ingestion
-│   ├── layers.py          # Clean panel, truncation, transitions, vintages, snapshot
-│   ├── lgd.py             # Two-Factor Bounded LGD (24m & 36m follow-up)
-│   ├── markov.py          # Absorbing Markov engine & FICO-stratified ECL
-│   ├── diagnostics.py     # Wilson intervals, monotonicity & fast 3D tensor bootstrap
-│   └── backtest.py        # Out-of-sample forward-looking model validation (2018 -> 2019)
-├── main.py                # End-to-end execution pipeline
-├── requirements.txt       # Python library dependencies
-└── README.md              # Project documentation
-```
+The repository includes two exhaustive governance, econometric, and diagnostic documents:
+
+1. **[`docs/progress_report.md`](docs/progress_report.md): Model Development & Diagnostics Report**
+   * Complete portfolio reconciliation ($28.71B UPB, 174,293 active loans at December 2019 `201912`).
+   * Master Staged Provisioning Table with exact loan count, UPB, PD, LGD, and ECL breakdowns.
+   * Out-of-sample backtest diagnostics (Specifications A–D, binomial variance, relative error formulas).
+   * Rolling-origin multi-year backtest results (201512–201812 snapshots).
+   * Discrete annual hazard chaining for LGD re-default tails (36m vs 48m horizons).
+   * 8-scenario policy sensitivity grid and methodological disclosures.
+
+2. **[`docs/technical_plan_review.md`](docs/technical_plan_review.md): Technical Plan Review & Governance Addendum**
+   * Systematic phase gate audit (`Done`, `Done–FAILED`, `Partial`).
+   * Locked *ex-ante* acceptance rules: Fail if EITHER $|z| > 2.0$ OR $|\text{Relative Error}| > 15\%$, where $\text{Rel Error} = \frac{\text{Expected} - \text{Actual}}{\text{Expected}}$.
+   * Scoped SQL anti-pattern rules (`NOT IN` $\rightarrow$ `NOT EXISTS` across `src/` and committed reproduction scripts).
+   * Symmetric vintage curve denominator rules (observable-at-age denominators, origination cohorts).
+   * 14-loan reconciliation between raw (`1,970`) and censored (`1,956`) modified loan censuses.
 
 ---
 
-## 🚀 Quickstart
+## 📊 Headline Numbers & Reproduction Scripts
 
-### 1. Set Up Environment
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+All headline findings in the reports are strictly reproducible from committed, standalone scripts querying `mortgage_risk.duckdb`:
 
-### 2. Place Freddie Mac Data
-Place your origination and performance files in `./data/`:
-* Sample files: `data/sample_orig_2014.txt`, `data/sample_svcg_2014.txt`
-* Or full research files: `data/historical_data_2014Q1.txt`, `data/historical_data_time_2014Q1.txt`
+### 1. Headline ECL ($45.07M) and Sensitivity Grid ($35.80M – $51.96M)
+* **Script:** `python3 scratch/regenerate_grid.py`
+* **What it reproduces:**
+  * Reconciles the 9-row Master Table from `ecl_snapshot`: Total ECL = **$45,073,223.87** (at 0.1560% Clean PD) / **$45,228,278.45** (at 0.1600% sensitivity basis).
+  * Stage 1 ECL: $6,047,057.19 (13.42%); Stage 2 ECL: $22,397,943.84 (49.69%); Stage 3 ECL: $16,628,222.83 (36.89%).
+  * Pop 2 Provision Burden: $6,103,776.53 (13.54% of total reserve driven by 1.16% of UPB).
+  * 8-scenario policy sensitivity grid, including Calibrated Baseline ($35.80M), Censor Upper Bound ($51.96M), and the Illustrative Uniform Scaling Scenario (**$41,802,048.75 / ~$41.8M** via 0.885x non-Stage-3 scaling heuristic).
 
-### 3. Run Pipeline
-```bash
-# Run on sample files
-python3 main.py --orig "data/sample_orig_*.txt" --svcg "data/sample_svcg_*.txt"
+### 2. 201812 Out-of-Sample Backtest (Specifications A–D)
+* **Script:** `python3 scratch/reproduce_backtest.py`
+* **What it reproduces:**
+  * Measures empirical 2015–2017 historical Pop 2 Current 12-month default rates (2015: 9.71%, 2016: 11.04%, 2017: 8.51%; pooled: **9.64%** [99 / 1,027]).
+  * Evaluates Specifications A, B, C, and D against 2019 realized outcomes (194,925 loans, 912 defaults) using exact binomial variance throughout.
+  * Demonstrates that **Spec D FAILS (🔴 RED)** ($Z = -4.15\sigma$, Rel Err = +11.5% at total level; breaches in Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD).
+  * Demonstrates that **Specs B and C are aggregate passes that FAIL at the state level (🔴 RED)** due to offsetting errors (Pop 2 delinquent buckets breach in all specifications).
 
-# Run on historical research files
-python3 main.py --orig "data/historical_data_????Q?.txt" --svcg "data/historical_data_time_????Q?.txt"
-```
+### 3. Multi-Year Rolling-Origin Backtest (201512–201812 Snapshots)
+* **Script:** `python3 scratch/rolling_backtest.py`
+* **What it reproduces:**
+  * Scores four consecutive annual out-of-time evaluation windows using parameters strictly frozen on data prior to each snapshot date:
+    * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 952.5 ($Z = -3.87\sigma$, Err = +11.5%) $\rightarrow$ 🔴 **FAIL**
+    * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 981.3 ($Z = +13.61\sigma$, Err = -39.2%) $\rightarrow$ 🔴 **FAIL** (Hurricane shock under-prediction)
+    * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,463.4 ($Z = -13.15\sigma$, Err = +30.9%) $\rightarrow$ 🔴 **FAIL** (Trailing storm extrapolation)
+    * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 1,031.0 ($Z = -4.15\sigma$, Err = +11.5%) $\rightarrow$ 🔴 **FAIL** (Benign trough over-prediction)
+  * Confirms under the locked acceptance rule that **every snapshot fails**, demonstrating cyclical sensitivity and unconditioned matrix limitations.
+
+### 4. Vintage-Curve Denominator Integrity & 6-Month Binned Incidence
+* **Script:** `python3 scratch/reproduce_vintage_curves.py`
+* **What it reproduces:**
+  * Origination cohort denominators (350,000 across 2010–2016).
+  * Symmetric inclusion: restores 1,845 modified-after-default loans to default numerators (6,009 total defaults).
+  * Validates subset assertion: zero defaults occur beyond observable cohort horizons prior to 202002.
+  * Computes 6-month binned empirical default incidence with exposure defined as $\sum \text{observable loans} / 6.0$, verifying default incidence peaks at 13–30 months (0.190%–0.200%) and declines steadily thereafter.
+
+### 5. 14-Loan Census Reconciliation
+* **Script:** `python3 scratch/extract_14_loans.py`
+* **What it reproduces:**
+  * Reconciles the gap between 1,970 raw modification-flagged loans and 1,956 Layer 1 censored modified loans.
+  * Identifies the exact 14 loans modified *at or after* terminal status (9 modified at default, 5 modified at payoff).
+
+---
+
+## 🛠️ Required Data Files & Pipeline Execution
+
+### Data Files Required
+This project processes Freddie Mac Single-Family Loan-Level Datasets across 7 multi-vintage cohorts (2010–2016). **No proprietary data files are tracked or included in this repository.**
+
+To rebuild the database from scratch, place the following Freddie Mac flat files in `./data/`:
+* **Origination Files:** `data/sample_orig_2010.txt` through `data/sample_orig_2016.txt` (or quarterly research files `historical_data_YYYYQ?.txt`).
+* **Performance Files:** `data/sample_svcg_2010.txt` through `data/sample_svcg_2016.txt` (or quarterly research files `historical_data_time_YYYYQ?.txt`).
+* **Sample Scope:** Minimum 350,000 origination loans, ~26 million performance records spanning up to the pre-COVID cutoff (`202002`).
+
+### How to Rebuild the Database
+
+1. **Environment Setup:**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Ingestion & Layer Construction:**
+   ```bash
+   # Run full end-to-end pipeline (ingestion, filtering, transition extraction, ECL snapshot):
+   python3 main.py --orig "data/sample_orig_*.txt" --svcg "data/sample_svcg_*.txt"
+   ```
+
+3. **Verify Pipeline Integrity:**
+   ```bash
+   # Run test suite to verify schema padding and negative control assertions:
+   python3 -m pytest
+   ```
+
+---
+
+## 🔍 Known Econometric Limitations
+
+1. **Uncalibrated Macro Conditioning:** The absorbing Markov transition matrix is time-homogeneous and lacks macroeconomic conditioning variables (e.g., regional unemployment, HPI shifts). In benign expansionary periods (2016, 2019), the baseline model over-predicts defaults; in shock periods (2017 hurricanes), it under-predicts.
+2. **Offsetting Error Dynamics:** Specification B and C aggregate pass scores are masked by severe offsetting errors between performing and delinquent buckets.
+3. **Illustrative Scaling Nature of 0.885x:** Scaling non-Stage-3 provisions by 0.885 pulls reserves to ~$41.8M, but applying a single 12-month portfolio realization ratio uniformly to lifetime ECL across segments is an illustrative scaling heuristic, not an econometric segment calibration.
+4. **CECL Order-of-Magnitude:** Stage 1 clean loans require lifetime ECL under US GAAP CECL (~$96M+), bringing total reserves to ~$135M. This figure represents an uncalibrated theoretical ceiling.
+5. **Phase Scope Freeze:** Phases 1–3 scope is strictly frozen. EAD contractual amortization schedules, voluntary prepayment SMM curves, and Phase 4 macroeconomic overlays are deferred to future releases.
