@@ -228,10 +228,10 @@ def compute_pop1_params(con):
 def compute_age_bucketed_table(con):
     """
     Computes and displays the age-bucketed realized 12-month default rate table
-    restricted to Pop 1 Clean loans across evaluation years 2015–2019 to test the aging hypothesis.
+    restricted to Pop 1 Clean loans across evaluation years 2015–2019 to evaluate whether calendar year dominates or age effects are detectable.
     """
     print("=========================================================================================================================")
-    print("             AGE-BUCKETED REALIZED 12-MONTH DEFAULT RATES FOR POP 1 CLEAN LOANS (TESTING AGING HYPOTHESIS)               ")
+    print("             AGE-BUCKETED REALIZED 12-MONTH DEFAULT RATES FOR POP 1 CLEAN LOANS (CALENDAR DOMINANCE EVALUATION)         ")
     print("=========================================================================================================================")
     q_age = """
     WITH snaps AS (
@@ -304,7 +304,7 @@ def compute_age_bucketed_table(con):
     print(p_defs.to_string())
     print("\n3. Realized 12-Month Default Rates by Age Bucket (%):")
     print(p_rate.map(lambda x: f"{x:.4f}%").to_string())
-    print("\nFindings on the Aging Hypothesis vs Calendar-Year Volatility (What the Table Shows):")
+    print("\nFindings on Age Profile vs Calendar-Year Volatility (What the Table Shows):")
     print(" - Calendar Year Dominates; No Age Effect Detectable in This Data: Across every individual age bucket,")
     print("   Pop 1 Clean default rates dropped by 49–70% from 2017 to 2019:")
     print("   * Loans aged 25–36m fell from 0.3716% (2017) to 0.1660% (2018) to 0.1096% (2019) (-70.5% drop).")
@@ -501,7 +501,7 @@ def run_rolling_backtest():
     pop2_params = compute_pop2_pds(con)
     pop1_params = compute_pop1_params(con)
 
-    # 2. Compute and display Age-Bucketed Table for testing the aging hypothesis
+    # 2. Compute and display Age-Bucketed Table to evaluate calendar dominance vs age effects
     compute_age_bucketed_table(con)
 
     # 3. Run multi-year rolling backtest under Trailing Parameterization
@@ -553,10 +553,11 @@ def run_rolling_backtest():
     print("                                      ERRATA LINE TO v0.2 ROLLING CONCLUSIONS                                            ")
     print("=========================================================================================================================")
     print("ERRATUM (v0.2 Rolling Conclusions):")
-    print("1. Aging Hypothesis: The v0.2 conclusion attributing the 2017-2019 default collapse to aging/burnout overstated demographic")
-    print("   effects. Pop 1 Clean rates fell across every age bucket from 2017 to 2019 (by 49–70%), showing that calendar year")
-    print("   dominates; no age effect is detectable in this data. Furthermore, the age profile is not fully flat (in 2015, rates rise")
-    print("   with age from 0.19% at 1-12m to 0.26% at 49-60m), and 2017 was an external calendar shock.")
+    print("1. Age Effect vs Calendar Regime: The v0.2 conclusion attributing the 2017-2019 default collapse to loan age was incorrect:")
+    print("   calendar year dominates; no age effect is detectable in this data. Pop 1 Clean rates fell across every age bucket")
+    print("   from 2017 to 2019 (by 49–70%), demonstrating that calendar year dominates; no age effect is detectable in this data.")
+    print("   Furthermore, the age profile is not fully flat (in 2015, rates rise with age from 0.19% at 1-12m to 0.26% at 49-60m),")
+    print("   and 2017 was an external calendar shock.")
     print("2. Spec D Backtest & Parameter Attribution: The legacy +11.5% error (-4.15σ, 0.885x scaling, $41.8M) was not solely a Pop 2")
     print("   artifact. Pop 2 input fixes moved ECL by only ~2% (-$725k); the clean rate was also overstated. Aggregate over-prediction")
     print("   hinges on which Pop 1 Clean parameterization is used (long-run pooled PD fails aggregate at -5.14σ; trailing yields aggregate")
