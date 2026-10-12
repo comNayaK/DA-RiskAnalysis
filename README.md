@@ -58,12 +58,20 @@ All headline findings in the reports are strictly reproducible from committed, s
 ### 3. Multi-Year Rolling-Origin Backtest (201512–201812 Snapshots)
 * **Script:** `python3 scratch/rolling_backtest.py`
 * **What it reproduces:**
+  * Dynamically computes Pop 2 empirical PDs (Current, 30 DPD, 60 DPD, Modified) for all four snapshots strictly from data $\le \text{snapshot}$ under both Trailing and Pooled parameterizations.
   * Scores four consecutive annual out-of-time evaluation windows using parameters strictly frozen on data prior to each snapshot date:
-    * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 952.5 ($Z = -3.87\sigma$, Err = +11.5%) $\rightarrow$ 🔴 **FAIL**
-    * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 981.3 ($Z = +13.61\sigma$, Err = -39.2%) $\rightarrow$ 🔴 **FAIL** (Hurricane shock under-prediction)
-    * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,463.4 ($Z = -13.15\sigma$, Err = +30.9%) $\rightarrow$ 🔴 **FAIL** (Trailing storm extrapolation)
-    * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 1,031.0 ($Z = -4.15\sigma$, Err = +11.5%) $\rightarrow$ 🔴 **FAIL** (Benign trough over-prediction)
-  * Confirms under the locked acceptance rule that **every snapshot fails**, demonstrating cyclical sensitivity and unconditioned matrix limitations.
+    * **Trailing Parameterization:**
+      * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 930.3 ($Z = -3.08\sigma$, Err = +9.4%) $\rightarrow$ 🔴 **FAIL**
+      * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 955.7 ($Z = +14.55\sigma$, Err = -42.9%) $\rightarrow$ 🔴 **FAIL**
+      * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,427.5 ($Z = -12.05\sigma$, Err = +29.2%) $\rightarrow$ 🔴 **FAIL**
+      * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 958.2 ($Z = -1.64\sigma$, Err = +4.8%) $\rightarrow$ 🔴 **FAIL** (State-level breach in Pop 1 Clean)
+    * **Pooled-History Parameterization:**
+      * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 936.2 ($Z = -3.27\sigma$, Err = +10.0%) $\rightarrow$ 🔴 **FAIL**
+      * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 1,029.0 ($Z = +11.38\sigma$, Err = -32.7%) $\rightarrow$ 🔴 **FAIL**
+      * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,259.8 ($Z = -7.75\sigma$, Err = +19.7%) $\rightarrow$ 🔴 **FAIL**
+      * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 1,124.7 ($Z = -6.92\sigma$, Err = +18.9%) $\rightarrow$ 🔴 **FAIL**
+  * Evaluates Pop 1 Clean sensitivity on 201812 using long-run pooled Clean PD (0.2089% $\rightarrow$ Expected = 1,066.1, $Z = -5.14\sigma$).
+  * Produces an age-bucketed realized-rate table for Current loans across years 2015–2019 to test the demographic seasoning/aging hypothesis against the lagging-trailing-PD hypothesis.
 
 ### 4. Vintage-Curve Denominator Integrity & 6-Month Binned Incidence
 * **Script:** `python3 scratch/reproduce_vintage_curves.py`

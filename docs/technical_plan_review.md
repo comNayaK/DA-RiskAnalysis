@@ -212,7 +212,7 @@
 ## 6. Backtest Design & Out-of-Sample Methodology
 
 *   **Consistent In-Sample vs Backtest Parameters & Policy Choice Disclosure:**
-    *   *Backtest Discipline:* Clean-history Stage 1 PD is set at **0.1560%** for out-of-sample backtesting (derived from 323 / 207,061 in the trailing 201712 $\rightarrow$ 2018 window). Using the 2019 outcome (0.1163%) in the backtest would constitute forbidden look-ahead leakage.
+    *   *Backtest Discipline:* Clean-history Stage 1 PD is set at **0.1560%** for out-of-sample backtesting (derived from 323 / 207,061 in the trailing 201712 $\rightarrow$ 2018 window when Pop 2 loans are unpartitioned; strictly 313 / 206,839 [0.1513%] under Pop 1 only partitioning, reconciled by 222 Pop 2 loans and 10 defaults). Using the 2019 outcome (0.1163%) in the backtest would constitute forbidden look-ahead leakage.
     *   *Provisioning Policy Choice:* At the `201912` portfolio snapshot, the 2019 realized clean rate (0.1163% = 218 / 187,493) was already known. Applying 0.1560% in the Master Table is an explicit **conservative risk management policy choice** (incorporating multi-year cycle conservatism rather than pricing reserves to the trough of a historically benign year).
     *   *Quantified Sensitivity:* Pricing Stage 1 Clean UPB ($27.34B) at the realized 2019 rate of 0.1163% lowers Stage 1 Clean ECL from $6,047,057.19 to $4,506,997.77 (**-$1,540,059.42 / -$1.54M**), pulling total portfolio ECL down from **$45,073,223.87** to **$43,533,164.45** (-3.42%).
 *   **Consistent Out-of-Time Training:** Matrix parameters for out-of-sample testing must be trained on all transitions observed strictly on or before the snapshot date (`monthly_reporting_period <= snapshot_date`), eliminating temporal mismatch.

@@ -131,9 +131,12 @@ A basic econometric requirement of credit risk models is that a cumulative **Lif
 
 ## 5. Out-of-Sample Backtest Diagnostics (201812 $\rightarrow$ 2019)
 
-### Snapshot Confirmation for 0.1560% (Spec B)
-* **Confirmation:** The 0.1560% clean-history default rate was measured from the **201712 snapshot evaluated across 2018 outcomes** (323 defaults out of 207,061 clean loans).
-* Therefore, this parameter was known and available as of December 2018 (`201812`). It is **in-sample trailing history**, not post-hoc test data.
+### Snapshot Confirmation & Census Reconciliation for Clean-History Rates
+* **Confirmation & Census Reconciliation (323 / 207,061 vs 313 / 206,839):**
+  * The baseline rate of **0.1560%** (323 defaults / 207,061 clean loans) was measured from the 201712 snapshot across 2018 outcomes across **all active Current loans in good standing with clean 12-month history, without excluding Pop 2 loans**.
+  * Under **strict Pop 1 filtering** (excluding all loans that had ever modified or defaulted as of 201712), the population was **313 defaults out of 206,839 loans (0.1513%)**.
+  * **Reconciliation of the Gap:** The delta of **222 loans and 10 defaults** ($10 / 222 = 4.5045\%$) represents active Pop 2 Current loans with clean trailing 12-month performance. Blending these 222 modified/prior-default loans into the broader clean population inflated clean default counts from 313 to 323, yielding $323 / 207,061 = 0.15599\% \approx 0.1560\%$.
+* Both rates were strictly observable and known prior to December 2018 (`201812`). They represent **in-sample trailing history**, not post-hoc test data.
 
 ### Pre-Determined Acceptance Rule (Stricter Dual Tripwire)
 To avoid post-hoc bias where tolerance bands are widened to pass a failing model, the model governance acceptance rule is fixed *ex-ante* as the **Stricter Dual Tripwire Standard**:
@@ -217,19 +220,61 @@ and Pop 2 delinquent states (+44.4%, +16.0%) to over-predict. Under the stricter
 
 To evaluate whether the 2019 backtest failure represents an isolated single-year regime anomaly or structural model bias, a rolling-origin out-of-time backtest was executed across four consecutive annual snapshots (201512, 201612, 201712, and 201812). For each snapshot $T$, all parameters were strictly frozen on data observed on or before $T$, scoring 12-month realized outcomes over the subsequent calendar year ($T+1$). Scored under the locked ex-ante rule ($\text{Fail if EITHER } |z| > 2.0 \text{ OR } |\text{Rel Error}| > 15\%$):
 
-| Snapshot | Outcome Year | Active Loans | Realized Defaults | Expected Defaults | Aggregate $Z$-Score | Relative Error | State-Level Breaches | Locked Rule Verdict |
-|---|---|---|---|---|---|---|---|---|
-| **201512** | **2016** | 215,270 | 843 | 952.5 | **-3.87σ** | **+11.5%** | 2 states (Pop 1 Clean, Pop 2 30 DPD) | 🔴 **FAIL** |
-| **201612** | **2017** | 233,615 | 1,366 | 981.3 | **+13.61σ** | **-39.2%** | 4 states (Pop 1 Clean, 30 DPD; Pop 2 30, 60 DPD) | 🔴 **FAIL** |
-| **201712** | **2018** | 214,259 | 1,011 | 1,463.4 | **-13.15σ** | **+30.9%** | 6 states (Pop 1 Clean, Prob; Pop 2 All) | 🔴 **FAIL** |
-| **201812** | **2019** | 194,925 | 912 | 1,031.0 | **-4.15σ** | **+11.5%** | 3 states (Pop 1 Clean, Pop 2 30, 60 DPD) | 🔴 **FAIL** |
-| **Pooled** | **2016–2019** | **858,069** | **4,132** | **4,428.1** | **N/A** | **+6.7%** | **All Snapshots Breach** | 🔴 **FAIL** |
+#### Side-by-Side Comparison: Trailing 1-Year vs Pooled Historical Parameterizations
 
-**Empirical Findings Without Spin:**
-1. **Not Uniform Over-Prediction:** The model does not over-predict in every calendar year. In 2017, the model severely **under-predicted** defaults by -39.2% ($Z = +13.61\sigma$, 1,366 actual vs 981.3 expected), driven by the unmodeled catastrophic 2017 Atlantic hurricane season (Harvey/Irma).
-2. **Expansionary Over-Prediction:** In benign credit expansion years (2016 and 2019), the model over-predicts actual defaults by exactly +11.5% ($Z = -3.87\sigma$ and $Z = -4.15\sigma$).
-3. **Trailing Shock Extrapolation:** In 2018, the trailing clean PD absorbed the 2017 storm spike (0.3004% clean PD), mechanically extrapolating disaster default rates into a normalized year and causing severe over-prediction (+30.9%, $Z = -13.15\sigma$).
-4. **Governance Conclusion:** Under the locked acceptance rule, **every single snapshot fails** both aggregate and state-level standards. The diagnostics indicate that the failure is not merely a 2019 regime artifact, but a consequence of unconditioned Markov matrices that lack macroeconomic and disaster screening overlays.
+| Snapshot | Outcome Year | Active Loans | Realized Defaults | Trailing Expected | Trailing $Z$ | Trailing Error | Pooled Expected | Pooled $Z$ | Pooled Error | Locked Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **201512** | **2016** | 215,270 | 843 | 930.3 | **-3.08σ** | **+9.4%** | 936.2 | **-3.27σ** | **+10.0%** | 🔴 **FAIL** |
+| **201612** | **2017** | 233,615 | 1,366 | 955.7 | **+14.55σ** | **-42.9%** | 1,029.0 | **+11.38σ** | **-32.7%** | 🔴 **FAIL** |
+| **201712** | **2018** | 214,259 | 1,011 | 1,427.5 | **-12.05σ** | **+29.2%** | 1,259.8 | **-7.75σ** | **+19.7%** | 🔴 **FAIL** |
+| **201812** | **2019** | 194,925 | 912 | 958.2 | **-1.64σ** | **+4.8%** | 1,124.7 | **-6.92σ** | **+18.9%** | 🔴 **FAIL** |
+
+*Note on 201812 Trailing Performance:* Under the measured trailing parameterization, aggregate expected defaults are 958.2 vs 912 actual ($Z = -1.64\sigma$, Rel Error = +4.8%), passing aggregate tolerance bands. However, under the locked dual tripwire standard ("fail a state or the total"), the single state-level breach in Pop 1 Clean (283.7 expected vs 218 actual, $Z = -3.90\sigma$, Error = +23.2%) fails the snapshot.
+
+#### Pop 1 Clean Sensitivity (Long-Run Pooled PD on Snapshot 201812)
+If Pop 1 Clean is parameterized with its long-run pooled pre-2019 default rate of **0.2089%** (2,034 defaults / 973,828 clean loans across 2014–2018 evaluations) rather than the trailing 2018 rate (0.1513%), expected defaults for Pop 1 Clean rise from 283.7 to **391.7 loans** ($Z = -8.78\sigma$, Rel Error = +44.3%). Total portfolio expected defaults rise from 958.2 to **1,066.1 loans** ($Z = -5.14\sigma$, Rel Error = +14.5%), showing that long-run pooling increases over-prediction during cyclically benign years.
+
+#### Age-Bucketed Realized 12-Month Default Rates (Testing the Aging Hypothesis)
+To test whether the decline in defaults across 2017–2019 is driven by portfolio aging (seasoning into burnout) rather than calendar shocks, realized 12-month default rates for active Current loans were bucketed by loan age (months since origination) across evaluation years:
+
+**1. Active Current Loan Population (Census Counts by Age Bucket):**
+
+| Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
+|---|---|---|---|---|---|
+| **01–12m** | 50,649 | 50,715 | 50,169 | 7,827 | 9 |
+| **13–24m** | 45,283 | 41,867 | 42,064 | 43,814 | 7,287 |
+| **25–36m** | 41,033 | 42,155 | 34,762 | 37,589 | 40,166 |
+| **37–48m** | 29,638 | 37,546 | 37,407 | 29,943 | 34,428 |
+| **49–60m** | 18,877 | 25,593 | 32,752 | 33,506 | 26,960 |
+| **61–84m** | 0 | 15,716 | 34,279 | 47,842 | 57,031 |
+| **85m+** | 0 | 0 | 0 | 10,945 | 26,231 |
+| **Total Active** | **185,480** | **213,592** | **231,433** | **211,466** | **192,112** |
+
+**2. Realized 12-Month Default Rates (% by Age Bucket):**
+
+| Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
+|---|---|---|---|---|---|
+| **01–12m** | 0.2369% | 0.1775% | 0.4046% | 0.1789% | 0.0000% |
+| **13–24m** | 0.2208% | 0.2508% | 0.3875% | 0.2168% | 0.1784% |
+| **25–36m** | 0.2656% | 0.2230% | 0.4718% | 0.2261% | 0.1892% |
+| **37–48m** | 0.2969% | 0.2104% | 0.3422% | 0.2538% | 0.2208% |
+| **49–60m** | 0.3761% | 0.2383% | 0.2443% | 0.2268% | 0.2040% |
+| **61–84m** | N/A | 0.2545% | 0.3180% | 0.1986% | 0.1701% |
+| **85m+** | N/A | N/A | N/A | 0.2193% | 0.2974% |
+
+**Empirical Analysis of Hypotheses (Without Spin):**
+1. **The Aging / Seasoning Hypothesis:**
+   * In a closed multi-vintage sample (2010–2016 originations with no new production after 2016), the active portfolio naturally seasoned over time. By 2019, **43.3% of active Current loans (83,262 / 192,112)** were older than 60 months (5+ years), compared to 0% in 2015.
+   * Because mortgage default hazard curves empirically peak around ages 24–48 months and decline in seasoned years (burnout effect), this demographic portfolio shift exerted an organic downward pull on observed aggregate default rates.
+2. **The Lagging Trailing-PD Hypothesis:**
+   * A working hypothesis for the multi-year backtest performance is that relying on trailing 12-month default rates introduces a mechanical one-year phase lag.
+   * When default rates experienced an acute spike in 2017 (e.g., reaching 0.4718% in the 25–36m bucket and 0.3004% in Pop 1 clean), the model—parameterized on benign 2016 data—severely under-predicted 2017 ($Z = +14.55\sigma$).
+   * In 2018, the trailing model absorbed this elevated 2017 spike rate into its parameters just as realized default rates normalized back downward (falling to 0.2261% in the 25–36m bucket and 0.1513% in Pop 1 clean), causing severe mechanical over-prediction ($Z = -12.05\sigma$).
+3. **Cyclical Volatility vs Demographic Aging:**
+   * Crucially, the age-bucketed table reveals that default rates within identical age buckets also fluctuated across calendar years (e.g., 25–36m loans experienced a default rate of 0.2656% in 2015, spiking to 0.4718% in 2017, and declining to 0.1892% in 2019).
+   * This confirms that observed defaults reflect a combination of portfolio aging and calendar-year fluctuations. However, absent an explicit econometric test conditioning transitions on macroeconomic covariates (e.g., unemployment, HPI) or regional indicators, the exact macroeconomic attribution remains a hypothesis rather than a validated empirical proof.
+4. **Governance Verdict:**
+   * Under the locked ex-ante dual tripwire standard, all four snapshots fail primarily due to state-level breaches and phase-lag overshooting.
 
 ---
 

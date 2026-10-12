@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import duckdb
 import numpy as np
 import pandas as pd
@@ -149,6 +153,76 @@ def run_reproduce_backtest():
         print(f"Plan Gate 1 Rule (per state and in total): {'🔴 FAIL' if (not agg_pass or failed_segments) else '🟢 PASS'}")
 
     print("\n=========================================================================================================================")
+    print("                      3. RERUN 201812 WITH THE SAME POP 2 FUNCTION (TRAILING VS POOLED)                                   ")
+    print("=========================================================================================================================")
+    from scratch.rolling_backtest import init_backtest_tables, compute_pop2_pds, compute_pop1_params
+    init_backtest_tables(con)
+    p2_dyn = compute_pop2_pds(con)
+    p1_dyn = compute_pop1_params(con)
+
+    dyn_specs = [
+        ("SPECIFICATION D (RERUN - TRAILING POP 2 & CLEAN/PROBATION):", [
+            ("Pop 1: Current (Clean)", 187493, 218, p1_dyn["trailing"][201812]["clean"][0], p1_dyn["trailing"][201812]["clean"][1]),
+            ("Pop 1: Current (Probation)", 3983, 122, p1_dyn["trailing"][201812]["prob"][0], p1_dyn["trailing"][201812]["prob"][1]),
+            ("Pop 1: 30_DPD", 1255, 170, 0.120800, "12.0800% (Matrix 12m)"),
+            ("Pop 1: 60_DPD", 220, 136, 0.590900, "59.0900% (Matrix 12m)"),
+            ("Pop 2: Current", 636, 55, p2_dyn["trailing"][201812]["Current"]["pd"], p2_dyn["trailing"][201812]["Current"]["label"]),
+            ("Pop 2: 30_DPD", 115, 34, p2_dyn["trailing"][201812]["30_DPD"]["pd"], p2_dyn["trailing"][201812]["30_DPD"]["label"]),
+            ("Pop 2: 60_DPD", 87, 58, p2_dyn["trailing"][201812]["60_DPD"]["pd"], p2_dyn["trailing"][201812]["60_DPD"]["label"]),
+            ("Pop 2: Modified", 1136, 119, p2_dyn["trailing"][201812]["Modified"]["pd"], p2_dyn["trailing"][201812]["Modified"]["label"]),
+        ]),
+        ("SPECIFICATION D (RERUN - POOLED POP 2 & CLEAN/PROBATION):", [
+            ("Pop 1: Current (Clean)", 187493, 218, p1_dyn["pooled"][201812]["clean"][0], p1_dyn["pooled"][201812]["clean"][1]),
+            ("Pop 1: Current (Probation)", 3983, 122, p1_dyn["pooled"][201812]["prob"][0], p1_dyn["pooled"][201812]["prob"][1]),
+            ("Pop 1: 30_DPD", 1255, 170, 0.120800, "12.0800% (Matrix 12m)"),
+            ("Pop 1: 60_DPD", 220, 136, 0.590900, "59.0900% (Matrix 12m)"),
+            ("Pop 2: Current", 636, 55, p2_dyn["pooled"][201812]["Current"]["pd"], p2_dyn["pooled"][201812]["Current"]["label"]),
+            ("Pop 2: 30_DPD", 115, 34, p2_dyn["pooled"][201812]["30_DPD"]["pd"], p2_dyn["pooled"][201812]["30_DPD"]["label"]),
+            ("Pop 2: 60_DPD", 87, 58, p2_dyn["pooled"][201812]["60_DPD"]["pd"], p2_dyn["pooled"][201812]["60_DPD"]["label"]),
+            ("Pop 2: Modified", 1136, 119, p2_dyn["pooled"][201812]["Modified"]["pd"], p2_dyn["pooled"][201812]["Modified"]["label"]),
+        ])
+    ]
+
+    for title, rows in dyn_specs:
+        print(f"\n{title}")
+        print(f"{'Segment':<27} | {'Loans':>7} | {'Actual':>6} | {'12m PD Feeding Row':<24} | {'Expected':>8} | {'Z-Score':>7} | {'Rel Error':>9} | {'Stricter Gate Status'}")
+        print("-" * 115)
+        tot_n = sum(r[1] for r in rows)
+        tot_act = sum(r[2] for r in rows)
+        tot_exp = sum(r[1] * r[3] for r in rows)
+        tot_var = sum(r[1] * r[3] * (1.0 - r[3]) for r in rows)
+        tot_sd = np.sqrt(tot_var)
+        tot_z = (tot_act - tot_exp) / tot_sd
+        tot_err = (tot_exp - tot_act) / tot_exp * 100.0
+
+        failed_segments = []
+        for r in rows:
+            seg, n, act, p, p_label = r
+            exp = n * p
+            var = n * p * (1.0 - p)
+            sd = np.sqrt(var)
+            z = (act - exp) / sd
+            err = (exp - act) / exp * 100.0
+            status = "🔴 FAIL" if (abs(z) > 2.0 or abs(err) > 15.0) else "🟢 PASS"
+            if status == "🔴 FAIL":
+                failed_segments.append(seg)
+            print(f"{seg:<27} | {n:>7,d} | {act:>6,d} | {p_label:<24} | {exp:>8.1f} | {z:>+6.2f}σ | {err:>+8.1f}% | {status}")
+        print("-" * 115)
+        
+        agg_pass = (abs(tot_z) <= 2.0 and abs(tot_err) <= 15.0)
+        if agg_pass and len(failed_segments) > 0:
+            tot_status = "aggregate pass, state-level FAIL (offsetting errors)"
+        elif not agg_pass:
+            tot_status = "🔴 FAIL (|Z| > 2.0)" if abs(tot_z) > 2.0 else "🔴 FAIL"
+        else:
+            tot_status = "🟢 PASS (Aggregate & State-Level)"
+            
+        print(f"{'PORTFOLIO TOTAL':<27} | {tot_n:>7,d} | {tot_act:>6,d} | {' ':24} | {tot_exp:>8.1f} | {tot_z:>+6.2f}σ | {tot_err:>+8.1f}% | {tot_status}")
+        print(f"State-Level Verdict: {'🔴 FAIL' if failed_segments else '🟢 PASS'} (Breaches: {', '.join(failed_segments) if failed_segments else 'None'})")
+        print(f"Plan Gate 1 Rule (per state and in total): {'🔴 FAIL' if (not agg_pass or failed_segments) else '🟢 PASS'}")
+
+    print("\n=========================================================================================================================")
 
 if __name__ == "__main__":
     run_reproduce_backtest()
+
