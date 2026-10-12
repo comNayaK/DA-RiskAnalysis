@@ -187,20 +187,43 @@ def generate_headline_and_gate7():
     # 6. Censor Upper Bound (16.28% Pop 1 / 13.60% Pop 2 LGD)
     tot_upper, det_upper = calc_grid_ecl(pd_map, PARAMS["lgd_p1_censor_upper"], PARAMS["lgd_p2_upper"], PARAMS["lgd_p3_upper"])
 
-    # 7. Illustrative Scaling Scenario (scaling non-Stage-3 provisions by 0.885 heuristic)
-    # Note: Applying a uniform 0.885 factor is an illustrative scaling heuristic (taking the 12-month portfolio
-    # default-count ratio: 912 actual / 1,031 expected ~ 0.885 and applying it to lifetime ECL across all non-Stage-3 segments),
-    # not an econometric segment calibration. Over-prediction is concentrated in Pop 1 Clean and Pop 2 delinquent states,
-    # so a uniform factor misallocates.
+    # 7. Illustrative Scaling Scenario (Recomputed from Measured Trailing Result: 912 / 958.2 = 0.9518x)
+    # The measured trailing backtest (Specification D rerun) yields 958.2 expected defaults vs 912 actual
+    # (Z = -1.64σ, relative error = +4.8%). Scaling non-Stage-3 ECL by 0.9518x (912 / 958.2):
     ecl_s3 = df_master.loc[df_master["segment"]=="Pop 3: Active Default", "ECL"].values[0]
     ecl_non_s3 = tot_headline - ecl_s3
-    tot_regime = (ecl_non_s3 * 0.885) + ecl_s3
+    scale_factor_trailing = 912.0 / 958.2
+    tot_regime_trailing = (ecl_non_s3 * scale_factor_trailing) + ecl_s3
+    # Erratum: Legacy uniform scaling used 0.885x (912 / 1,031 ~ 0.885) based on frozen Spec D:
+    tot_regime_legacy = (ecl_non_s3 * 0.885) + ecl_s3
 
     # 8. 2019 Realized Clean PD Sensitivity (0.1163% vs 0.1560% Policy Choice)
     # At 201912 snapshot, 0.1163% was known; using 0.1560% is a conservative policy choice.
     pd_realized_clean = pd_map.copy()
     pd_realized_clean["Pop 1: Current (Clean)"] = 0.00116271  # 218 / 187,493
     tot_realized_clean, det_realized_clean = calc_grid_ecl(pd_realized_clean, PARAMS["lgd_p1_headline_48m"], PARAMS["lgd_p2_base"], PARAMS["lgd_p3_headline"])
+
+    # 9. Measured Parameters ECL Sensitivities
+    # Strict Clean Only (313 / 206,839 = 0.151325%):
+    pd_strict_clean = pd_map.copy()
+    pd_strict_clean["Pop 1: Current (Clean)"] = 313.0 / 206839.0
+    tot_strict_clean, _ = calc_grid_ecl(pd_strict_clean, PARAMS["lgd_p1_headline_48m"], PARAMS["lgd_p2_base"], PARAMS["lgd_p3_headline"])
+
+    # Measured Trailing Pop 2 + Strict Clean:
+    pd_meas_trailing = pd_strict_clean.copy()
+    pd_meas_trailing["Pop 2: Current"] = 36.0 / 423.0            # 8.5106% vs 12.24%
+    pd_meas_trailing["Pop 2: 30_DPD"] = 25.0 / 87.0             # 28.7356% vs 51.50%
+    pd_meas_trailing["Pop 2: 60_DPD"] = 49.0 / 76.0             # 64.4737% vs 79.49%
+    pd_meas_trailing["Pop 2: Modified (Clean)"] = 91.0 / 740.0   # 12.2973% vs 10.48%
+    tot_meas_trailing, _ = calc_grid_ecl(pd_meas_trailing, PARAMS["lgd_p1_headline_48m"], PARAMS["lgd_p2_base"], PARAMS["lgd_p3_headline"])
+
+    # Measured Pooled Pop 2 + Strict Clean:
+    pd_meas_pooled = pd_strict_clean.copy()
+    pd_meas_pooled["Pop 2: Current"] = 141.0 / 1396.0          # 10.1003%
+    pd_meas_pooled["Pop 2: 30_DPD"] = 105.0 / 306.0            # 34.3137%
+    pd_meas_pooled["Pop 2: 60_DPD"] = 138.0 / 213.0            # 64.7887%
+    pd_meas_pooled["Pop 2: Modified (Clean)"] = 321.0 / 2199.0 # 14.5975%
+    tot_meas_pooled, _ = calc_grid_ecl(pd_meas_pooled, PARAMS["lgd_p1_headline_48m"], PARAMS["lgd_p2_base"], PARAMS["lgd_p3_headline"])
 
     print("=========================================================================================================================")
     print("                                   POLICY SCENARIO SENSITIVITY GRID (FROM ecl_snapshot)                                  ")
@@ -211,8 +234,13 @@ def generate_headline_and_gate7():
     print(f"4. HEADLINE SCENARIO (48m Tail):    ${tot_headline:>12,.2f} | Delta vs Cal Base: +${tot_headline - tot_cal_base:>10,.2f} (+{(tot_headline - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"5. Alternative Cohort (4,606):      ${tot_alt:>12,.2f} | Delta vs Cal Base: +${tot_alt - tot_cal_base:>10,.2f} (+{(tot_alt - tot_cal_base)/tot_cal_base*100:5.2f}%)")
     print(f"6. Censor Upper Bound (16.28% LGD): ${tot_upper:>12,.2f} | Delta vs Cal Base: +${tot_upper - tot_cal_base:>10,.2f} (+{(tot_upper - tot_cal_base)/tot_cal_base*100:5.2f}%)")
-    print(f"7. Illustrative Scaling (0.885x non-S3):${tot_regime:>10,.2f} | Delta vs Headline: -${tot_headline - tot_regime:>10,.2f} (-{(tot_headline - tot_regime)/tot_headline*100:5.2f}%)")
+    print(f"7. Measured Trailing Scaling (0.952x):${tot_regime_trailing:>11,.2f} | Delta vs Headline: -${tot_headline - tot_regime_trailing:>10,.2f} (-{(tot_headline - tot_regime_trailing)/tot_headline*100:5.2f}%) [Recomputed from 912/958.2]")
+    print(f"   [Legacy Spec D Scaling (0.885x)]:  ${tot_regime_legacy:>12,.2f} | Delta vs Headline: -${tot_headline - tot_regime_legacy:>10,.2f} (-{(tot_headline - tot_regime_legacy)/tot_headline*100:5.2f}%) [Erratum: 912/1,031]")
     print(f"8. 2019 Realized Clean PD (0.116%): ${tot_realized_clean:>12,.2f} | Delta vs Headline: -${tot_headline - tot_realized_clean:>10,.2f} (-{(tot_headline - tot_realized_clean)/tot_headline*100:5.2f}%) [Policy Sensitivity]")
+    print(f"9. Measured Parameter Sensitivities:")
+    print(f"   - Strict Clean Only (0.1513%):    ${tot_strict_clean:>12,.2f} | Delta vs Headline: -${tot_headline - tot_strict_clean:>10,.2f} (-{(tot_headline - tot_strict_clean)/tot_headline*100:5.2f}%)")
+    print(f"   - Measured Trailing Pop 2 + Clean:${tot_meas_trailing:>12,.2f} | Delta vs Headline: -${tot_headline - tot_meas_trailing:>10,.2f} (-{(tot_headline - tot_meas_trailing)/tot_headline*100:5.2f}%)")
+    print(f"   - Measured Pooled Pop 2 + Clean:  ${tot_meas_pooled:>12,.2f} | Delta vs Headline: -${tot_headline - tot_meas_pooled:>10,.2f} (-{(tot_headline - tot_meas_pooled)/tot_headline*100:5.2f}%)")
     print("=========================================================================================================================")
 
     return df_master, total_ecl

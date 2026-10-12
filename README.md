@@ -45,14 +45,14 @@ All headline findings in the reports are strictly reproducible from committed, s
   * Reconciles the 9-row Master Table from `ecl_snapshot`: Total ECL = **$45,073,223.87** (at 0.1560% Clean PD) / **$45,228,278.45** (at 0.1600% sensitivity basis).
   * Stage 1 ECL: $6,047,057.19 (13.42%); Stage 2 ECL: $22,397,943.84 (49.69%); Stage 3 ECL: $16,628,222.83 (36.89%).
   * Pop 2 Provision Burden: $6,103,776.53 (13.54% of total reserve driven by 1.16% of UPB).
-  * 8-scenario policy sensitivity grid, including Calibrated Baseline ($35.80M), Censor Upper Bound ($51.96M), and the Illustrative Uniform Scaling Scenario (**$41,802,048.75 / ~$41.8M** via 0.885x non-Stage-3 scaling heuristic).
+  * 8-scenario policy sensitivity grid, including Calibrated Baseline ($35.80M), Censor Upper Bound ($51.96M), and the Recomputed Trailing Scaling Scenario (**$43,701,736.66 / ~$43.7M** via 0.9518x non-Stage-3 scaling; legacy 0.885x / $41.8M noted as erratum).
 
 ### 2. 201812 Out-of-Sample Backtest (Specifications A–D)
 * **Script:** `python3 scratch/reproduce_backtest.py`
 * **What it reproduces:**
   * Measures empirical 2015–2017 historical Pop 2 Current 12-month default rates (2015: 9.71%, 2016: 11.04%, 2017: 8.51%; pooled: **9.64%** [99 / 1,027]).
   * Evaluates Specifications A, B, C, and D against 2019 realized outcomes (194,925 loans, 912 defaults) using exact binomial variance throughout.
-  * Demonstrates that **Spec D FAILS (🔴 RED)** ($Z = -4.15\sigma$, Rel Err = +11.5% at total level; breaches in Pop 1 Clean, Pop 2 30 DPD, Pop 2 60 DPD).
+  * Demonstrates that **Measured Trailing Spec D passes in aggregate ($Z = -1.64\sigma$, Rel Err = +4.8%)** but fails the locked gate due to a state-level breach in Pop 1 Clean ($Z = -3.90\sigma$). *(Erratum: Legacy frozen Spec D with biased Pop 2 parameters failed at total level: $Z = -4.15\sigma$, Rel Err = +11.5%).*
   * Demonstrates that **Specs B and C are aggregate passes that FAIL at the state level (🔴 RED)** due to offsetting errors (Pop 2 delinquent buckets breach in all specifications).
 
 ### 3. Multi-Year Rolling-Origin Backtest (201512–201812 Snapshots)
@@ -126,6 +126,6 @@ To rebuild the database from scratch, place the following Freddie Mac flat files
 
 1. **Uncalibrated Macro Conditioning:** The absorbing Markov transition matrix is time-homogeneous and lacks macroeconomic conditioning variables (e.g., regional unemployment, HPI shifts). In benign expansionary periods (2016, 2019), the baseline model over-predicts defaults; in shock periods (2017 hurricanes), it under-predicts.
 2. **Offsetting Error Dynamics:** Specification B and C aggregate pass scores are masked by severe offsetting errors between performing and delinquent buckets.
-3. **Illustrative Scaling Nature of 0.885x:** Scaling non-Stage-3 provisions by 0.885 pulls reserves to ~$41.8M, but applying a single 12-month portfolio realization ratio uniformly to lifetime ECL across segments is an illustrative scaling heuristic, not an econometric segment calibration.
+3. **Illustrative Scaling Nature of 0.952x (and Legacy 0.885x):** Scaling non-Stage-3 provisions by 0.9518 pulls reserves to ~$43.7M (vs legacy 0.885x pulling to ~$41.8M), but applying a single 12-month portfolio realization ratio uniformly to lifetime ECL across segments is an illustrative scaling heuristic, not an econometric segment calibration.
 4. **CECL Order-of-Magnitude:** Stage 1 clean loans require lifetime ECL under US GAAP CECL (~$96M+), bringing total reserves to ~$135M. This figure represents an uncalibrated theoretical ceiling.
 5. **Phase Scope Freeze:** Phases 1–3 scope is strictly frozen. EAD contractual amortization schedules, voluntary prepayment SMM curves, and Phase 4 macroeconomic overlays are deferred to future releases.

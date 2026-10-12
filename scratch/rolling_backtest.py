@@ -228,10 +228,10 @@ def compute_pop1_params(con):
 def compute_age_bucketed_table(con):
     """
     Computes and displays the age-bucketed realized 12-month default rate table
-    for Current loans across evaluation years 2015–2019 to test the aging hypothesis.
+    restricted to Pop 1 Clean loans across evaluation years 2015–2019 to test the aging hypothesis.
     """
     print("=========================================================================================================================")
-    print("               AGE-BUCKETED REALIZED 12-MONTH DEFAULT RATES FOR CURRENT LOANS (TESTING AGING HYPOTHESIS)                ")
+    print("             AGE-BUCKETED REALIZED 12-MONTH DEFAULT RATES FOR POP 1 CLEAN LOANS (TESTING AGING HYPOTHESIS)               ")
     print("=========================================================================================================================")
     q_age = """
     WITH snaps AS (
@@ -263,6 +263,14 @@ def compute_age_bucketed_table(con):
           ON c.monthly_reporting_period = s.snap 
          AND c.loan_state = 'Current' 
          AND c.zero_balance_code IS NULL
+        LEFT JOIN p2_first p ON c.loan_id = p.loan_id
+        WHERE (p.min_p2_period IS NULL OR p.min_p2_period > s.snap)
+          AND NOT EXISTS (
+              SELECT 1 FROM clean_monthly_performance h
+              WHERE h.loan_id = c.loan_id 
+                AND h.monthly_reporting_period BETWEEN s.snap - 99 AND s.snap
+                AND h.loan_state IN ('30_DPD', '60_DPD')
+          )
     ),
     defs AS (
         SELECT 
@@ -287,20 +295,29 @@ def compute_age_bucketed_table(con):
     """
     df_age = con.execute(q_age).df()
     p_obs = df_age.pivot(index='age_bucket', columns='yr', values='obs').fillna(0).astype(int)
+    p_defs = df_age.pivot(index='age_bucket', columns='yr', values='defs').fillna(0).astype(int)
     p_rate = df_age.pivot(index='age_bucket', columns='yr', values='rate_pct').fillna(0)
     
-    print("1. Active Current Loan Population by Age Bucket (Loan Counts):")
+    print("1. Active Pop 1 Clean Loan Population by Age Bucket (Loan Counts):")
     print(p_obs.to_string())
-    print("\n2. Realized 12-Month Default Rates by Age Bucket (%):")
+    print("\n2. Realized 12-Month Defaults by Age Bucket (Counts):")
+    print(p_defs.to_string())
+    print("\n3. Realized 12-Month Default Rates by Age Bucket (%):")
     print(p_rate.map(lambda x: f"{x:.4f}%").to_string())
-    print("\nFindings on the Aging Hypothesis vs Lagging Trailing-PD Hypothesis:")
-    print(" - Portfolio Seasoning: By 2019, 43.3% of active Current loans (83,262 / 192,112) are >60 months old (5+ years),")
-    print("   compared to 0% in 2015. Since mortgage default hazards naturally peak at ages 24–48m and decline into seasoned")
-    print("   burnout, seasoning explains a major secular downward pull on aggregate default rates.")
-    print(" - Calendar Cycle / Shock: Even within identical seasoning buckets (e.g., 25–36m), default rates spiked to 0.4718% in")
-    print("   2017 before declining to 0.2261% (2018) and 0.1892% (2019), demonstrating an overlay of cyclical volatility.")
+    print("\nFindings on the Aging Hypothesis vs Calendar-Year Volatility (What the Table Shows):")
+    print(" - Contradiction of Aging Burnout Hypothesis: The data directly contradicts the hypothesis that portfolio")
+    print("   aging/burnout caused the collapse in default rates between 2017 and 2019.")
+    print(" - Within-Bucket Calendar Collapse: Across every individual age bucket, default rates dropped dramatically:")
+    print("   * Loans aged 25–36m collapsed from 0.3716% (2017) to 0.1660% (2018) to 0.1096% (2019) (-70.5% drop).")
+    print("   * Loans aged 37–48m collapsed from 0.2559% (2017) to 0.1580% (2018) to 0.1249% (2019) (-51.2% drop).")
+    print("   * Loans aged 49–60m collapsed from 0.1952% (2017) to 0.1676% (2018) to 0.0994% (2019) (-49.1% drop).")
+    print("   * Loans aged 61–84m collapsed from 0.2210% (2017) to 0.1214% (2018) to 0.1110% (2019) (-49.8% drop).")
+    print(" - Flat Within-Year Age Profile: In 2018, rates across all ages 1m to 60m are virtually identical (0.1567% to 0.1676%).")
+    print("   In 2019, 85m+ loans exhibited a higher default rate (0.1451%) than loans aged 13-24m (0.1121%) or 25-36m (0.1096%).")
+    print(" - Primary Driver: The multi-year variance is driven by a calendar-year regime shift affecting all cohorts uniformly,")
+    print("   rather than demographic aging down a seasoning curve.")
     print(" - Lagging Trailing-PD Effect: Trailing 12-month models suffer a 1-year phase lag, causing acute under-prediction in")
-    print("   shock years (2017: Z = +13.6σ) and acute over-prediction in the post-shock year (2018: Z = -13.2σ).")
+    print("   shock years (2017: Z = +14.55σ) and acute over-prediction when shocks recede (2018: Z = -12.05σ).")
     print("=========================================================================================================================\n")
 
 def execute_backtest_run(con, pop2_params, pop1_params, mode="trailing", pop1_clean_override=None, target_snap=None):
@@ -510,12 +527,42 @@ def run_rolling_backtest():
         print(f"{tr['snap']:<10} | {tr['eval_yr']:<8} | {tr['n']:>9,d} | {tr['actual']:>6,d} | {tr['expected']:>12.1f} | {tr['z']:>+9.2f}σ | {tr['err']:>+11.1f}% | {pl['expected']:>10.1f} | {pl['z']:>+7.2f}σ | {pl['err']:>+9.1f}% | {tr['verdict']}")
     print("-" * 125)
 
-    # 6. Pop 1 Clean Long-Run Sensitivity on Snapshot 201812
+    # 6. Pop 1 Clean Long-Run Sensitivity on Snapshot 201812 (Full Pool)
     print("\n=========================================================================================================================")
     print("       POP 1 CLEAN SENSITIVITY: LONG-RUN POOLED CLEAN PD (0.2089%) APPLIED TO 201812 SNAPSHOT                            ")
     print("=========================================================================================================================")
-    # Run 201812 single year sensitivity
     execute_backtest_run(con, pop2_params, pop1_params, mode="trailing", pop1_clean_override=0.002089, target_snap=201812)
+
+    # 7. Pop 1 Clean Sensitivity: Pooled Ex-2017 Clean PD (0.1810%) on Snapshot 201812
+    print("\n=========================================================================================================================")
+    print("       POP 1 CLEAN SENSITIVITY: POOLED EX-2017 CLEAN PD (0.1810%) APPLIED TO 201812 SNAPSHOT                            ")
+    print("=========================================================================================================================")
+    # Ex-2017 Clean Pool <= 201712: (313 + 382 + 343 + 313) / (146,868 + 182,715 + 210,024 + 206,839) = 1,351 / 746,446 = 0.18098%
+    pd_ex2017 = 1351.0 / 746446.0
+    execute_backtest_run(con, pop2_params, pop1_params, mode="trailing", pop1_clean_override=pd_ex2017, target_snap=201812)
+
+    print("\n=========================================================================================================================")
+    print("                         SUMMARY OF 201812 POP 1 CLEAN PARAMETERIZATION SENSITIVITIES                                    ")
+    print("=========================================================================================================================")
+    print("Parameterization             | Clean PD | Clean Exp | Clean Z | Clean Err | Total Exp | Total Z | Total Err | Locked Verdict")
+    print("-" * 125)
+    print(f"Trailing 2018 (Measured)     | 0.1513%  |     283.7 |  -3.90σ |    +23.2% |     958.2 |  -1.64σ |     +4.8% | 🔴 FAIL (Clean breach)")
+    print(f"Pooled Ex-2017 (Sensitivity) | 0.1810%  |     339.3 |  -6.59σ |    +35.8% |   1,013.8 |  -3.50σ |    +10.0% | 🔴 FAIL (|Z| > 2.0 & Clean)")
+    print(f"Full Pooled <=201712         | 0.2089%  |     391.7 |  -8.78σ |    +44.3% |   1,066.1 |  -5.14σ |    +14.5% | 🔴 FAIL (|Z| > 2.0 & Clean)")
+    print("-" * 125)
+    print("\n=========================================================================================================================")
+    print("                                      ERRATA LINE TO v0.2 ROLLING CONCLUSIONS                                            ")
+    print("=========================================================================================================================")
+    print("ERRATUM (v0.2 Rolling Conclusions):")
+    print("1. Aging Hypothesis Refutation: The v0.2 hypothesis attributing the 2017-2019 default decline to portfolio aging/seasoning")
+    print("   burnout is empirically contradicted by the age-bucketed realized default rate table of Pop 1 Clean loans. Default rates")
+    print("   fell across every individual age bucket (e.g. 25-36m collapsed -70.5% from 0.3716% to 0.1096%), proving a portfolio-wide")
+    print("   calendar-year regime shift rather than demographic aging down a hazard curve.")
+    print("2. Spec D Backtest & Scaling Recomputation: The legacy Spec D result (+11.5% error, -4.15σ, 0.885x scaling, $41.8M) was an")
+    print("   artifact of biased frozen Pop 2 delinquent parameters (53.19% and 79.33%) and unpartitioned clean rates (0.1560%). Under the")
+    print("   corrected dynamic trailing parameterization, portfolio expected defaults are 958.2 vs 912 actual (+4.8% error, Z = -1.64σ),")
+    print("   passing aggregate tolerance bands, with the recomputed non-Stage-3 scaling factor of 0.9518x yielding $43.70M.")
+    print("=========================================================================================================================\n")
 
 if __name__ == "__main__":
     run_rolling_backtest()

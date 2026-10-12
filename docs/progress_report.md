@@ -4,7 +4,7 @@
 **Model Purpose:** Internal Credit Risk Modeling & Staged Provisioning Engine (Phases 1–3)  
 **Reporting Snapshot:** December 2019 (`201912`)  
 **Data Scope:** 7 Multi-Vintage Cohorts (2010–2016), 350,000 Freddie Mac Sample Originations, 26,027,039 Performance Rows, $28.71B Active UPB  
-**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $52.0M), not a definitive validated point estimate. Crucially, the model's uncalibrated backtest over-predicts 2019 realized defaults by roughly 11.5%; an illustrative scaling scenario applying a uniform ~0.885 heuristic (taking the 12-month default-count ratio 912/1,031 to non-Stage-3 lifetime ECL) pulls the headline provision toward **~$41.8M** ($41,802,048.75). Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
+**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $52.0M), not a definitive validated point estimate. Crucially, the model's 201812 out-of-sample backtest under measured dynamic trailing parameters yields 958.2 expected defaults vs 912 actual ($+4.8\%$ relative error, $Z = -1.64\sigma$), passing aggregate statistical tolerance bands ($|Z| \le 2.0$); recomputing the uniform scaling scenario from this measured trailing realization ratio ($912 / 958.2 \approx 0.9518\times$ applied to non-Stage-3 lifetime ECL) pulls the headline provision toward **~$43.7M** ($43,701,736.66). *(Erratum: The legacy $0.885\times$ scaling factor and ~$41.8M scenario were an artifact of biased frozen Pop 2 delinquent parameters of 53.19% and 79.33% that yielded 1,031.0 expected defaults, $+11.5\%$ error, and $Z = -4.15\sigma$).* Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
 
 ---
 
@@ -41,8 +41,8 @@ The engine replaces naive historical accounting heuristics with an **absorbing M
 
 | Dimension | Baseline / Reference | Model Development Scenario | Modeling & Reserve Implication |
 |---|---|---|---|
-| **Portfolio ECL Scenario** | $35,797,234.52 (Calibrated Baseline) | **$45,073,223.87** (Headline Scenario @ 0.1560% Clean PD)<br>*(0.885x Illustrative Scaling: $41,802,048.75 / ~$41.8M)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~11.5% |
-| **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Stricter Dual Tripwire: 🔴 FAIL / RED**<br>Total: $Z = -4.15\sigma$, Error = +11.5% | Model fails fixed ex-ante gate ($|z| > 2$ OR Error > 15%); over-predicts benign 2019 regime |
+| **Portfolio ECL Scenario** | $35,797,234.52 (Calibrated Baseline) | **$45,073,223.87** (Headline Scenario @ 0.1560% Clean PD)<br>*(Measured Trailing Scaling 0.952x: $43,701,736.66 / ~$43.7M; Legacy Erratum 0.885x: $41,802,048.75 / ~$41.8M)* | +$9.28M isolated reserve increase from probation; over-predicts trailing backtest by +4.8% (+11.5% under legacy frozen Spec D) |
+| **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Measured Trailing Spec D: Aggregate PASS / State-Level FAIL**<br>Total: $Z = -1.64\sigma$, Rel Err = +4.8% (Clean state breach: $Z = -3.90\sigma$)<br>*(Legacy Frozen Spec D Erratum: Total $Z = -4.15\sigma$, Rel Err = +11.5%)* | Passes total statistical tolerance ($|Z| \le 2.0$, Error $\le 15\%$), but fails locked gate due to isolated Pop 1 Clean state breach |
 | **LGD Framework** | 11.50% (Base Resolved Censor Lower) | **14.18%** (Blended Pop 1 with 48m Tail)<br>*(36m Horizon: 14.00% with 2.50% Tail)* | Derived on dollar-weighted first default basis (33.24% mod share, 43.0% re-default) |
 | **Pop 2 Reserve Burden** | Ignored in single-pop model | **$6,103,776.53 (13.54% of total ECL)**<br>*(13.50% at 0.1600% clean PD)* | 1.16% of UPB drives ~13.5% of post-probation provisions; tail double-counting avoided |
 | **Data Integrity Audit** | Legacy column shifts | **0 Quarantine Rows (0.000%)** | Passes raw positive & negative shift assertions on flat files |
@@ -205,10 +205,13 @@ Pop 2: 30_DPD                   115            34   53.1944% (Frozen Pool)      
 Pop 2: 60_DPD                    87            58   79.3258% (Frozen Pool)        69.0    -2.92σ             +16.0%            🔴 FAIL (Z & Err)
 Pop 2: Modified               1,136           119   12.0599% (Hazard 12m)        137.0    -1.64σ             +13.1%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL D           194,925           912                              1,031.0    -4.15σ             +11.5%            🔴 FAIL (|Z| > 2.0)
-DIAGNOSIS: Scoring the production staged structure without circular proxies shows that while probation Current (128.4 exp vs 122 act, +5.0%)
-and Pop 2 Current (61.3 exp vs 55 act, +10.3%) track actuals, the benign 2019 regime causes clean loans (218 act vs 292.5 exp, +25.5%)
-and Pop 2 delinquent states (+44.4%, +16.0%) to over-predict. Under the stricter dual tripwire, Spec D FAILS on |z| = 4.15 > 2.0.
+PORTFOLIO TOTAL D (Legacy Frozen) 194,925     912                              1,031.0    -4.15σ             +11.5%            🔴 FAIL (|Z| > 2.0)
+PORTFOLIO TOTAL D (Measured Trail) 194,925    912                                958.2    -1.64σ              +4.8%            Aggregate PASS, State FAIL
+DIAGNOSIS & ERRATUM: Under legacy frozen parameters (Spec D), biased Pop 2 delinquency inputs (53.19% and 79.33%) and unpartitioned clean rates
+(0.1560%) led to 1,031.0 expected defaults (+11.5% error, Z = -4.15σ). When re-run under measured dynamic trailing parameters strictly <= snapshot,
+portfolio expected defaults drop to 958.2 vs 912 actual (Z = -1.64σ, +4.8% error), passing aggregate statistical tripwires (|Z| <= 2.0 and |Err| <= 15%).
+All four Pop 2 states pass (Z between -1.87σ and +0.43σ). However, under the strict dual tripwire ("fail a state or the total"), the single breach in Pop 1 Clean
+(218 actual vs 283.7 expected, Z = -3.90σ, +23.2% error) fails the locked snapshot standard.
 ====================================================================================================================================
 ```
 
@@ -231,50 +234,82 @@ To evaluate whether the 2019 backtest failure represents an isolated single-year
 
 *Note on 201812 Trailing Performance:* Under the measured trailing parameterization, aggregate expected defaults are 958.2 vs 912 actual ($Z = -1.64\sigma$, Rel Error = +4.8%), passing aggregate tolerance bands. However, under the locked dual tripwire standard ("fail a state or the total"), the single state-level breach in Pop 1 Clean (283.7 expected vs 218 actual, $Z = -3.90\sigma$, Error = +23.2%) fails the snapshot.
 
-#### Pop 1 Clean Sensitivity (Long-Run Pooled PD on Snapshot 201812)
-If Pop 1 Clean is parameterized with its long-run pooled pre-2019 default rate of **0.2089%** (2,034 defaults / 973,828 clean loans across 2014–2018 evaluations) rather than the trailing 2018 rate (0.1513%), expected defaults for Pop 1 Clean rise from 283.7 to **391.7 loans** ($Z = -8.78\sigma$, Rel Error = +44.3%). Total portfolio expected defaults rise from 958.2 to **1,066.1 loans** ($Z = -5.14\sigma$, Rel Error = +14.5%), showing that long-run pooling increases over-prediction during cyclically benign years.
+#### Pop 1 Clean Sensitivities (Snapshot 201812: Trailing vs Pooled vs Ex-2017)
+To evaluate how clean-history baseline choices affect backtest fidelity:
+1. **Trailing 2018 Clean PD (0.1513% = 313 / 206,839):** Expected Clean defaults = 283.7 ($Z = -3.90\sigma$, Rel Err = +23.2%); Portfolio Total Expected = **958.2 loans** ($Z = -1.64\sigma$, Rel Err = **+4.8%**).
+2. **Pooled Ex-2017 Clean PD (0.1810% = 1,351 / 746,446):** Excluding the 2017 hurricane shock year from the historical pool yields a baseline PD of 0.1810%. Applied to 201812, Expected Clean defaults rise to 339.3 ($Z = -6.59\sigma$, Rel Err = +35.8%), bringing Portfolio Total Expected to **1,013.8 loans** ($Z = -3.50\sigma$, Rel Err = **+10.0%**).
+3. **Full Pooled Pre-2019 Clean PD (0.2089% = 2,034 / 973,828):** Including the 2017 shock year raises the baseline PD to 0.2089%. Expected Clean defaults rise to 391.7 ($Z = -8.78\sigma$, Rel Err = +44.3%), and Portfolio Total Expected reaches **1,066.1 loans** ($Z = -5.14\sigma$, Rel Err = **+14.5%**).
 
-#### Age-Bucketed Realized 12-Month Default Rates (Testing the Aging Hypothesis)
-To test whether the decline in defaults across 2017–2019 is driven by portfolio aging (seasoning into burnout) rather than calendar shocks, realized 12-month default rates for active Current loans were bucketed by loan age (months since origination) across evaluation years:
+| Clean Parameterization | Clean PD Basis | Clean Expected | Clean $Z$ | Clean Error | Portfolio Expected | Total $Z$ | Total Error | Locked Verdict |
+|---|---|---|---|---|---|---|---|---|
+| **Trailing 2018 (Measured)** | 0.1513% (313 / 206,839) | 283.7 | **-3.90σ** | **+23.2%** | **958.2** | **-1.64σ** | **+4.8%** | 🔴 **FAIL** (Clean State Breach) |
+| **Pooled Ex-2017 (Sensitivity)** | 0.1810% (1,351 / 746,446) | 339.3 | **-6.59σ** | **+35.8%** | **1,013.8** | **-3.50σ** | **+10.0%** | 🔴 **FAIL** (Total $|Z| > 2$ & Clean) |
+| **Full Pooled $\le 201712$** | 0.2089% (2,034 / 973,828) | 391.7 | **-8.78σ** | **+44.3%** | **1,066.1** | **-5.14σ** | **+14.5%** | 🔴 **FAIL** (Total $|Z| > 2$ & Clean) |
 
-**1. Active Current Loan Population (Census Counts by Age Bucket):**
+#### Age-Bucketed Realized 12-Month Default Rates for Pop 1 Clean Loans (Testing the Aging Hypothesis)
+To test whether the decline in defaults across 2017–2019 is driven by portfolio aging (seasoning into burnout) rather than calendar shocks, realized 12-month default rates for active **Pop 1 Clean loans** (excluding Pop 2 modified and Stage 2 probation loans) were bucketed by loan age (months since origination) across evaluation years:
 
-| Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
-|---|---|---|---|---|---|
-| **01–12m** | 50,649 | 50,715 | 50,169 | 7,827 | 9 |
-| **13–24m** | 45,283 | 41,867 | 42,064 | 43,814 | 7,287 |
-| **25–36m** | 41,033 | 42,155 | 34,762 | 37,589 | 40,166 |
-| **37–48m** | 29,638 | 37,546 | 37,407 | 29,943 | 34,428 |
-| **49–60m** | 18,877 | 25,593 | 32,752 | 33,506 | 26,960 |
-| **61–84m** | 0 | 15,716 | 34,279 | 47,842 | 57,031 |
-| **85m+** | 0 | 0 | 0 | 10,945 | 26,231 |
-| **Total Active** | **185,480** | **213,592** | **231,433** | **211,466** | **192,112** |
-
-**2. Realized 12-Month Default Rates (% by Age Bucket):**
+**1. Active Pop 1 Clean Loan Population (Census Counts by Age Bucket):**
 
 | Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
 |---|---|---|---|---|---|
-| **01–12m** | 0.2369% | 0.1775% | 0.4046% | 0.1789% | 0.0000% |
-| **13–24m** | 0.2208% | 0.2508% | 0.3875% | 0.2168% | 0.1784% |
-| **25–36m** | 0.2656% | 0.2230% | 0.4718% | 0.2261% | 0.1892% |
-| **37–48m** | 0.2969% | 0.2104% | 0.3422% | 0.2538% | 0.2208% |
-| **49–60m** | 0.3761% | 0.2383% | 0.2443% | 0.2268% | 0.2040% |
-| **61–84m** | N/A | 0.2545% | 0.3180% | 0.1986% | 0.1701% |
-| **85m+** | N/A | N/A | N/A | 0.2193% | 0.2974% |
+| **01–12m** | 50,142 | 50,229 | 49,658 | 7,657 | 9 |
+| **13–24m** | 44,584 | 41,016 | 41,323 | 42,930 | 7,136 |
+| **25–36m** | 40,462 | 41,403 | 33,906 | 36,742 | 39,238 |
+| **37–48m** | 29,094 | 36,998 | 36,737 | 29,117 | 33,618 |
+| **49–60m** | 18,433 | 25,051 | 32,267 | 32,823 | 26,145 |
+| **61–84m** | 0 | 15,327 | 33,491 | 46,938 | 55,852 |
+| **85m+** | 0 | 0 | 0 | 10,632 | 25,495 |
+| **Total Pop 1 Clean** | **182,715** | **210,024** | **227,382** | **206,839** | **187,493** |
 
-**Empirical Analysis of Hypotheses (Without Spin):**
-1. **The Aging / Seasoning Hypothesis:**
-   * In a closed multi-vintage sample (2010–2016 originations with no new production after 2016), the active portfolio naturally seasoned over time. By 2019, **43.3% of active Current loans (83,262 / 192,112)** were older than 60 months (5+ years), compared to 0% in 2015.
-   * Because mortgage default hazard curves empirically peak around ages 24–48 months and decline in seasoned years (burnout effect), this demographic portfolio shift exerted an organic downward pull on observed aggregate default rates.
-2. **The Lagging Trailing-PD Hypothesis:**
-   * A working hypothesis for the multi-year backtest performance is that relying on trailing 12-month default rates introduces a mechanical one-year phase lag.
-   * When default rates experienced an acute spike in 2017 (e.g., reaching 0.4718% in the 25–36m bucket and 0.3004% in Pop 1 clean), the model—parameterized on benign 2016 data—severely under-predicted 2017 ($Z = +14.55\sigma$).
-   * In 2018, the trailing model absorbed this elevated 2017 spike rate into its parameters just as realized default rates normalized back downward (falling to 0.2261% in the 25–36m bucket and 0.1513% in Pop 1 clean), causing severe mechanical over-prediction ($Z = -12.05\sigma$).
-3. **Cyclical Volatility vs Demographic Aging:**
-   * Crucially, the age-bucketed table reveals that default rates within identical age buckets also fluctuated across calendar years (e.g., 25–36m loans experienced a default rate of 0.2656% in 2015, spiking to 0.4718% in 2017, and declining to 0.1892% in 2019).
-   * This confirms that observed defaults reflect a combination of portfolio aging and calendar-year fluctuations. However, absent an explicit econometric test conditioning transitions on macroeconomic covariates (e.g., unemployment, HPI) or regional indicators, the exact macroeconomic attribution remains a hypothesis rather than a validated empirical proof.
+**2. Realized 12-Month Defaults (Counts by Age Bucket):**
+
+| Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
+|---|---|---|---|---|---|
+| **01–12m** | 102 | 76 | 185 | 12 | 0 |
+| **13–24m** | 88 | 75 | 141 | 70 | 8 |
+| **25–36m** | 83 | 72 | 126 | 61 | 43 |
+| **37–48m** | 61 | 57 | 94 | 46 | 42 |
+| **49–60m** | 48 | 45 | 63 | 55 | 26 |
+| **61–84m** | 0 | 18 | 74 | 57 | 62 |
+| **85m+** | 0 | 0 | 0 | 12 | 37 |
+| **Total Defaults** | **382** | **343** | **683** | **313** | **218** |
+
+**3. Realized 12-Month Default Rates (% by Age Bucket):**
+
+| Age Bucket | 2015 | 2016 | 2017 | 2018 | 2019 |
+|---|---|---|---|---|---|
+| **01–12m** | 0.2034% | 0.1513% | 0.3725% | 0.1567% | 0.0000% |
+| **13–24m** | 0.1974% | 0.1829% | 0.3412% | 0.1631% | 0.1121% |
+| **25–36m** | 0.2051% | 0.1739% | 0.3716% | 0.1660% | 0.1096% |
+| **37–48m** | 0.2097% | 0.1541% | 0.2559% | 0.1580% | 0.1249% |
+| **49–60m** | 0.2604% | 0.1796% | 0.1952% | 0.1676% | 0.0994% |
+| **61–84m** | N/A | 0.1174% | 0.2210% | 0.1214% | 0.1110% |
+| **85m+** | N/A | N/A | N/A | 0.1129% | 0.1451% |
+| **Aggregate Clean Rate** | **0.2091%** | **0.1633%** | **0.3004%** | **0.1513%** | **0.1163%** |
+
+**Empirical Analysis of Hypotheses (What the Table Shows):**
+1. **Refutation of the Aging Burnout Hypothesis:**
+   * The empirical data directly contradicts the hypothesis that portfolio seasoning caused the collapse in default rates between 2017 and 2019.
+   * If aging were the primary driver, default rates within individual age buckets would have remained relatively stable while the aggregate rate fell due to shifting cohort weights toward older buckets.
+   * Instead, the table demonstrates that default rates collapsed dramatically across **every single age bucket**:
+     - Loans aged 25–36m collapsed from 0.3716% (2017) to 0.1660% (2018) to 0.1096% (2019) (a -70.5% drop).
+     - Loans aged 37–48m collapsed from 0.2559% (2017) to 0.1580% (2018) to 0.1249% (2019) (a -51.2% drop).
+     - Loans aged 49–60m collapsed from 0.1952% (2017) to 0.1676% (2018) to 0.0994% (2019) (a -49.1% drop).
+     - Loans aged 61–84m collapsed from 0.2210% (2017) to 0.1214% (2018) to 0.1110% (2019) (a -49.8% drop).
+2. **Flat Within-Year Age Profile:**
+   * Across age buckets within the same calendar year, default rates exhibit remarkably little age-dependent decline. In 2018, rates across all ages 1m to 60m are virtually identical (0.1567% to 0.1676%). In 2019, 85m+ loans exhibited a higher default rate (0.1451%) than loans aged 13–24m (0.1121%) or 25–36m (0.1096%).
+   * Therefore, the aggregate default variation was driven by a calendar-year regime shift affecting all cohorts uniformly, rather than movement down a seasoning curve.
+3. **The Lagging Trailing-PD Hypothesis:**
+   * A working hypothesis for multi-year forecasting failure is that relying on trailing 12-month default rates introduces a mechanical one-year phase lag.
+   * When default rates experienced an acute surge in 2017 (0.3004% clean rate across the portfolio), the trailing model—parameterized on benign 2016 data (0.1633%)—severely under-predicted 2017 ($Z = +14.55\sigma$).
+   * In 2018, the trailing model absorbed this elevated 2017 spike rate into its parameters just as realized default rates normalized back downward to 0.1513%, causing severe mechanical over-prediction ($Z = -12.05\sigma$).
 4. **Governance Verdict:**
    * Under the locked ex-ante dual tripwire standard, all four snapshots fail primarily due to state-level breaches and phase-lag overshooting.
+
+**Erratum (v0.2 Rolling Conclusions):**
+* **Aging Hypothesis:** The v0.2 conclusion attributing the 2017–2019 default rate collapse to portfolio aging/seasoning burnout is empirically contradicted by the age-bucketed realized default rate table of Pop 1 Clean loans. As demonstrated by the within-bucket rates (e.g., 25–36m collapsing from 0.3716% to 0.1096%), the decline occurred uniformly across all age buckets rather than through cohort aging down a hazard curve.
+* **Spec D Backtest & Scaling Recomputation:** The legacy Spec D result (+11.5% error, $-4.15\sigma$, $0.885\times$ scaling, $\$41.8\text{M}$) was an artifact of biased frozen Pop 2 delinquent parameters (53.19% and 79.33%) and unpartitioned clean rates (0.1560%). Under the corrected dynamic trailing parameterization, portfolio expected defaults are 958.2 vs 912 actual ($+4.8\%$ error, $Z = -1.64\sigma$), passing aggregate tolerance bands, with the recomputed non-Stage-3 scaling factor of $0.9518\times$ yielding $\$43.70\text{M}$.
 
 ---
 
@@ -385,10 +420,30 @@ Rather than presenting a single point estimate, the engine's output is framed as
 | *Headline Sensitivity @ 0.1600% Clean PD* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,228,278.45** | +$9.43M (+26.35%) | Against Calibrated Base ($35.80M) |
 | **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,754.29** | +$9.85M (+27.52%) | Against Calibrated Base ($35.80M) |
 | **Sensitivity: Censor Upper Bound (16.28% LGD)** | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,959,042.29** | **+$16.16M (+45.15%)** | Against Calibrated Base ($35.80M) |
-| **Illustrative Scaling Scenario (0.885x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,802,048.75** | **~$41.8M** | Scaled non-Stage-3 ECL (heuristic) |
+| **Measured Trailing Scaling Scenario (0.952x)** | **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$43,701,736.66** | **-$1.37M (-3.04%)** | Recomputed non-Stage-3 scaling via 912/958.2 |
+| *Legacy Spec D Scaling Erratum (0.885x)* | 14.18% | 11.50% | 0.1560% | 9.510% | **$41,802,048.75** | -$3.27M (-7.26%) | Erratum: Scaled via biased frozen Spec D (912/1,031) |
 | **2019 Realized Clean PD (Policy Sensitivity)** | **14.18%** | **11.50%** | **0.1163%** | **9.510%** | **$43,533,201.21** | **-$1.54M (-3.42%)** | Against Headline ($45.07M); policy choice sensitivity |
 
-*Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest by ~11.5%** (1,027.5 expected vs 912 actual under Spec A; 1,031.0 under Spec D). Under an **illustrative uniform scaling heuristic** (applying the 12-month default realization ratio of $\sim 0.885$ to lifetime non-Stage-3 ECL rather than an econometric segment recalibration; note that a uniform factor misallocates because over-prediction is concentrated in Pop 1 Clean and Pop 2 delinquent buckets), the provision scales down to **~$41.8M** ($41,802,048.75).
+### Parameters Used in the v0.1 ECL & Sensitivity at Measured Values
+
+The v0.1 headline ECL provision ($45,073,223.87) incorporated specific unsegmented and proxy assumptions that were subsequently retired during backtesting validation. The table below lists the retired inputs alongside their measured empirical replacements:
+
+| Model Input | Parameter in v0.1 ECL | Measured Trailing Value ($\le 201812$) | Measured Pooled Value ($\le 201712$) | Derivation & Validation Finding |
+|---|---|---|---|---|
+| **Pop 1 Clean PD** | **0.1560%** (323 / 207,061) | **0.1513%** (313 / 206,839) | **0.2089%** (2,034 / 973,828) | 0.1560% erroneously included 222 Pop 2 clean loans with 10 defaults (4.50% rate); strict Pop 1 clean rate is 0.1513%. |
+| **Pop 2 Current PD** | **12.240%** (Proxy Lifetime) | **8.5106%** (36 / 423) | **10.1003%** (141 / 1,396) | 12.24% was an assumed lifetime proxy; trailing 12m realized rate is 8.5106% (2015–17 pool: 9.6397%). |
+| **Pop 2 30 DPD PD** | **51.500%** (Full Panel) | **28.7356%** (25 / 87) | **34.3137%** (105 / 306) | 51.50% (and 53.19% backtest) suffered selection bias by blending modified re-defaults; observed annual rates never exceeded 46.88%. |
+| **Pop 2 60 DPD PD** | **79.490%** (Full Panel) | **64.4737%** (49 / 76) | **64.7887%** (138 / 213) | Frozen pool rate of 79.49% over-predicted actual roll-to-default across cohorts. |
+| **Pop 2 Modified PD** | **10.480%** (Lookahead Floor) | **12.2973%** (91 / 740) | **14.5975%** (321 / 2,199) | 10.48% was the 2019 realized trailing rate (lookahead for 201812); strictly frozen trailing 2018 rate was 12.2973%. |
+
+#### Portfolio ECL Sensitivity at Measured Parameter Values (Evaluated on `ecl_snapshot`):
+* **Strict Clean PD Only (0.1513% vs 0.1560%):** Stage 1 Clean ECL declines by -$181,064.71, lowering total ECL from $45,073,223.87 to **$44,892,022.52** (-0.40%).
+* **Measured Trailing Pop 2 Parameters Only:** Pop 2 ECL declines by -$725,311.32, lowering total ECL to **$44,347,912.55** (-1.61%).
+* **Measured Trailing Pop 2 + Strict Clean PD:** Total portfolio ECL declines to **$44,166,711.20** (-$906,512.67 / -2.01% vs Headline).
+* **Measured Pooled Pop 2 + Strict Clean PD:** Total portfolio ECL is **$45,011,326.70** (-$61,897.17 / -0.14% vs Headline).
+* **Measured Trailing Scaling Scenario ($0.9518\times$ non-Stage-3 ECL):** Total portfolio ECL scales to **$43,701,736.66** (-$1,371,487.21 / -3.04% vs Headline).
+
+*Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest under measured dynamic trailing parameters by +4.8%** (958.2 expected vs 912 actual). Under an **illustrative uniform scaling heuristic** applying the measured trailing realization ratio of $912 / 958.2 \approx 0.9518$ to lifetime non-Stage-3 ECL, the provision scales down to **~$43.7M** ($43,701,736.66). *(Erratum: Under the legacy frozen Spec D parameterization with biased Pop 2 delinquency inputs, expected defaults were 1,031.0 [+11.5% error], which previously scaled non-Stage-3 provisions by ~0.885 to ~$41.8M).*
 
 ---
 
