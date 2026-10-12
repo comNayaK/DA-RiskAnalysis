@@ -52,7 +52,7 @@ All headline findings in the reports are strictly reproducible from committed, s
 * **What it reproduces:**
   * Measures empirical 2015–2017 historical Pop 2 Current 12-month default rates (2015: 9.71%, 2016: 11.04%, 2017: 8.51%; pooled: **9.64%** [99 / 1,027]).
   * Evaluates Specifications A, B, C, and D against 2019 realized outcomes (194,925 loans, 912 defaults) using exact binomial variance throughout.
-  * Demonstrates that **Measured Trailing Spec D passes in aggregate ($Z = -1.64\sigma$, Rel Err = +4.8%)** but fails the locked gate due to a state-level breach in Pop 1 Clean ($Z = -3.90\sigma$). *(Erratum: Legacy frozen Spec D with biased Pop 2 parameters failed at total level: $Z = -4.15\sigma$, Rel Err = +11.5%).*
+  * Demonstrates that **Measured Trailing Spec D yields aggregate pass, state-level FAIL ($Z = -1.64\sigma$, Rel Err = +4.8%)**, failing the locked gate due to a state-level breach in Pop 1 Clean ($Z = -3.90\sigma$, Err = +23.2%). *(Erratum: Legacy frozen Spec D with biased Pop 2 parameters failed at total level: $Z = -4.15\sigma$, Rel Err = +11.5%; fixing Pop 2 moved ECL by only ~2%, with aggregate over-prediction hinging on Pop 1 Clean parameterization).*
   * Demonstrates that **Specs B and C are aggregate passes that FAIL at the state level (🔴 RED)** due to offsetting errors (Pop 2 delinquent buckets breach in all specifications).
 
 ### 3. Multi-Year Rolling-Origin Backtest (201512–201812 Snapshots)
@@ -64,7 +64,7 @@ All headline findings in the reports are strictly reproducible from committed, s
       * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 930.3 ($Z = -3.08\sigma$, Err = +9.4%) $\rightarrow$ 🔴 **FAIL**
       * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 955.7 ($Z = +14.55\sigma$, Err = -42.9%) $\rightarrow$ 🔴 **FAIL**
       * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,427.5 ($Z = -12.05\sigma$, Err = +29.2%) $\rightarrow$ 🔴 **FAIL**
-      * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 958.2 ($Z = -1.64\sigma$, Err = +4.8%) $\rightarrow$ 🔴 **FAIL** (State-level breach in Pop 1 Clean)
+      * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 958.2 ($Z = -1.64\sigma$, Err = +4.8%) $\rightarrow$ 🔴 **FAIL** (Aggregate pass, state-level FAIL on Pop 1 Clean)
     * **Pooled-History Parameterization:**
       * **201512 $\rightarrow$ 2016:** Actual = 843, Expected = 936.2 ($Z = -3.27\sigma$, Err = +10.0%) $\rightarrow$ 🔴 **FAIL**
       * **201612 $\rightarrow$ 2017:** Actual = 1,366, Expected = 1,029.0 ($Z = +11.38\sigma$, Err = -32.7%) $\rightarrow$ 🔴 **FAIL**
