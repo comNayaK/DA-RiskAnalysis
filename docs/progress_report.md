@@ -4,7 +4,7 @@
 **Model Purpose:** Internal Credit Risk Modeling & Staged Provisioning Engine (Phases 1–3)  
 **Reporting Snapshot:** December 2019 (`201912`)  
 **Data Scope:** 7 Multi-Vintage Cohorts (2010–2016), 350,000 Freddie Mac Sample Originations, 26,027,039 Performance Rows, $28.71B Active UPB  
-**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $52.0M), not a definitive validated point estimate. Crucially, the model's uncalibrated backtest over-predicts 2019 realized defaults by roughly 11.5%; a regime-calibrated scenario scaling non-Stage-3 ECL by ~0.885 pulls the headline provision toward **~$41.8M** ($41,802,048.75). Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
+**Governance Notice:** This document is an internal model development and sensitivity draft. A model developer cannot independently validate their own model; an official validation requires independent review, external validation governance (e.g., SR 11-7 / OCC 2011-12 standards), and un-sampled production data. The headline figures (e.g., ~$45.1M – $45.2M) represent sensitivity scenarios within an empirical range ($35.8M – $52.0M), not a definitive validated point estimate. Crucially, the model's uncalibrated backtest over-predicts 2019 realized defaults by roughly 11.5%; an illustrative scaling scenario applying a uniform ~0.885 heuristic (taking the 12-month default-count ratio 912/1,031 to non-Stage-3 lifetime ECL) pulls the headline provision toward **~$41.8M** ($41,802,048.75). Scope is strictly frozen for Phases 1–3 (no Phase 4 macro overlays).
 
 ---
 
@@ -41,7 +41,7 @@ The engine replaces naive historical accounting heuristics with an **absorbing M
 
 | Dimension | Baseline / Reference | Model Development Scenario | Modeling & Reserve Implication |
 |---|---|---|---|
-| **Portfolio ECL Scenario** | $35,797,234.52 (Calibrated Baseline) | **$45,073,223.87** (Headline Scenario @ 0.1560% Clean PD)<br>*(0.885x Regime Scenario: $41,802,048.75 / ~$41.8M)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~11.5% |
+| **Portfolio ECL Scenario** | $35,797,234.52 (Calibrated Baseline) | **$45,073,223.87** (Headline Scenario @ 0.1560% Clean PD)<br>*(0.885x Illustrative Scaling: $41,802,048.75 / ~$41.8M)* | +$9.28M isolated reserve increase from probation; over-predicts backtest by ~11.5% |
 | **Out-of-Sample Backtest** | Circular setup previously gave $Z = -0.04\sigma$ | **Stricter Dual Tripwire: 🔴 FAIL / RED**<br>Total: $Z = -4.15\sigma$, Error = +11.5% | Model fails fixed ex-ante gate ($|z| > 2$ OR Error > 15%); over-predicts benign 2019 regime |
 | **LGD Framework** | 11.50% (Base Resolved Censor Lower) | **14.18%** (Blended Pop 1 with 48m Tail)<br>*(36m Horizon: 14.00% with 2.50% Tail)* | Derived on dollar-weighted first default basis (33.24% mod share, 43.0% re-default) |
 | **Pop 2 Reserve Burden** | Ignored in single-pop model | **$6,103,776.53 (13.54% of total ECL)**<br>*(13.50% at 0.1600% clean PD)* | 1.16% of UPB drives ~13.5% of post-probation provisions; tail double-counting avoided |
@@ -174,9 +174,10 @@ Pop 2: 30_DPD                   115            34   53.1944% (Frozen Pool)      
 Pop 2: 60_DPD                    87            58   79.3258% (Frozen Pool)        69.0    -2.92σ             +16.0%            🔴 FAIL (Z & Err)
 Pop 2: Modified               1,136           119   12.0599% (Hazard 12m)        137.0    -1.64σ             +13.1%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL B           194,925           912                                901.6    +0.39σ              -1.2%            🟢 PASS (Masked)
+PORTFOLIO TOTAL B           194,925           912                                901.6    +0.39σ              -1.2%            aggregate pass, state-level FAIL (offsetting errors)
 DIAGNOSIS: The apparent aggregate pass (+0.39σ, -1.2% error) is entirely an artifact of offsetting errors: Pop 1 Current
 under-predicts by -41.3 loans (-13.8%), which numerically cancels severe over-prediction in Pop 2 delinquencies (+44.4%, +16.0%).
+Under the plan's acceptance rule ("per state and in total"), Spec B FAILS at the state level.
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION C: Pre-2018 Clean-History Baseline (Data <= 201712 Snapshots Ex-Hurricane: 0.1800%)
 Pop 1: Current              191,476           340    0.1800% (Ex-Hurr Pool)      344.7    -0.25σ              +1.4%            🟢 PASS
@@ -187,9 +188,9 @@ Pop 2: 30_DPD                   115            34   53.1944% (Frozen Pool)      
 Pop 2: 60_DPD                    87            58   79.3258% (Frozen Pool)        69.0    -2.92σ             +16.0%            🔴 FAIL (Z & Err)
 Pop 2: Modified               1,136           119   12.0599% (Hazard 12m)        137.0    -1.64σ             +13.1%            🟢 PASS
 ------------------------------------------------------------------------------------------------------------------------------------
-PORTFOLIO TOTAL C           194,925           912                                954.8    -1.56σ              +4.5%            🟢 PASS
+PORTFOLIO TOTAL C           194,925           912                                954.8    -1.56σ              +4.5%            aggregate pass, state-level FAIL (offsetting errors)
 DIAGNOSIS: Under consistent binomial variance, Spec C passes at the portfolio aggregate level (-1.56σ, +4.5% error),
-though Pop 2 delinquent buckets (30 DPD and 60 DPD) fail their individual significance and materiality gates.
+but under the plan's acceptance rule ("per state and in total"), Spec C FAILS at the state level due to Pop 2 delinquent breaches (+44.4%, +16.0%).
 ------------------------------------------------------------------------------------------------------------------------------------
 SPECIFICATION D: Production Staged Structure (Clean @ 0.1560%, Probation @ 3.2236%)
 Pop 1: Current (Clean)      187,493           218    0.1560% (Trailing Clean)    292.5    -4.36σ             +25.5%            🔴 FAIL (Z & Err)
@@ -321,10 +322,10 @@ Rather than presenting a single point estimate, the engine's output is framed as
 | *Headline Sensitivity @ 0.1600% Clean PD* | 14.18% | 11.50% | 0.1600% | 9.510% | **$45,228,278.45** | +$9.43M (+26.35%) | Against Calibrated Base ($35.80M) |
 | **Alternative Cohort (4,606 Loans)** | 14.18% | 11.50% | 0.1560% | 9.510% | **$45,649,754.29** | +$9.85M (+27.52%) | Against Calibrated Base ($35.80M) |
 | **Sensitivity: Censor Upper Bound (16.28% LGD)** | 16.28% | 13.60% | 0.1560% | 9.510% | **$51,959,042.29** | **+$16.16M (+45.15%)** | Against Calibrated Base ($35.80M) |
-| **Regime-Calibrated Scenario (0.885x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,802,048.75** | **~$41.8M** | Scaled non-Stage-3 ECL |
+| **Illustrative Scaling Scenario (0.885x)**| **14.18%** | **11.50%** | **0.1560%** | **9.510%** | **$41,802,048.75** | **~$41.8M** | Scaled non-Stage-3 ECL (heuristic) |
 | **2019 Realized Clean PD (Policy Sensitivity)** | **14.18%** | **11.50%** | **0.1163%** | **9.510%** | **$43,533,201.21** | **-$1.54M (-3.42%)** | Against Headline ($45.07M); policy choice sensitivity |
 
-*Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest by ~11.5%** (1,027.5 expected vs 912 actual under Spec A; 1,031.0 under Spec D). If calibrated down to 2019 realized delinquency and default roll rates, scaling non-Stage-3 ECL by ~0.885 pulls the scenario toward **~$41.8M** ($41,802,048.75).
+*Headline Staging & Tail Choice:* The engine picks the **48-month horizon (14.18% Pop 1 LGD)** as its single headline reserve basis ($45.07M at 0.1560% Clean PD; $45.23M at 0.1600% sensitivity), with the 36-month horizon ($44.58M at 14.00% LGD) retained strictly as a sensitivity. The **$45.07M – $45.23M headline** represents an internal development scenario that **over-predicts the 2019 out-of-sample backtest by ~11.5%** (1,027.5 expected vs 912 actual under Spec A; 1,031.0 under Spec D). Under an **illustrative uniform scaling heuristic** (applying the 12-month default realization ratio of $\sim 0.885$ to lifetime non-Stage-3 ECL rather than an econometric segment recalibration; note that a uniform factor misallocates because over-prediction is concentrated in Pop 1 Clean and Pop 2 delinquent buckets), the provision scales down to **~$41.8M** ($41,802,048.75).
 
 ---
 

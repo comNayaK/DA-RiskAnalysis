@@ -122,6 +122,7 @@ def run_reproduce_backtest():
         tot_z = (tot_act - tot_exp) / tot_sd
         tot_err = (tot_exp - tot_act) / tot_exp * 100.0
 
+        failed_segments = []
         for r in rows:
             seg, n, act, p, p_label = r
             exp = n * p
@@ -130,10 +131,22 @@ def run_reproduce_backtest():
             z = (act - exp) / sd
             err = (exp - act) / exp * 100.0
             status = "🔴 FAIL" if (abs(z) > 2.0 or abs(err) > 15.0) else "🟢 PASS"
+            if status == "🔴 FAIL":
+                failed_segments.append(seg)
             print(f"{seg:<27} | {n:>7,d} | {act:>6,d} | {p_label:<24} | {exp:>8.1f} | {z:>+6.2f}σ | {err:>+8.1f}% | {status}")
         print("-" * 115)
-        tot_status = "🔴 FAIL (|Z| > 2.0)" if abs(tot_z) > 2.0 or abs(tot_err) > 15.0 else "🟢 PASS"
+        
+        agg_pass = (abs(tot_z) <= 2.0 and abs(tot_err) <= 15.0)
+        if agg_pass and len(failed_segments) > 0:
+            tot_status = "aggregate pass, state-level FAIL (offsetting errors)"
+        elif not agg_pass:
+            tot_status = "🔴 FAIL (|Z| > 2.0)" if abs(tot_z) > 2.0 else "🔴 FAIL"
+        else:
+            tot_status = "🟢 PASS (Aggregate & State-Level)"
+            
         print(f"{'PORTFOLIO TOTAL':<27} | {tot_n:>7,d} | {tot_act:>6,d} | {' ':24} | {tot_exp:>8.1f} | {tot_z:>+6.2f}σ | {tot_err:>+8.1f}% | {tot_status}")
+        print(f"State-Level Verdict: {'🔴 FAIL' if failed_segments else '🟢 PASS'} (Breaches: {', '.join(failed_segments) if failed_segments else 'None'})")
+        print(f"Plan Gate 1 Rule (per state and in total): {'🔴 FAIL' if (not agg_pass or failed_segments) else '🟢 PASS'}")
 
     print("\n=========================================================================================================================")
 
