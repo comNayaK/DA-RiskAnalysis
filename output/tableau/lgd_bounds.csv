@@ -1,0 +1,10 @@
+specification,category,horizon_months,p_liquidation_lower,p_liquidation_upper,severity,lgd_lower,lgd_upper,lgd_midpoint,base_lgd,tail_addon,modeled_lgd,notes
+24-Month Follow-Up (Empirical Cohort),Empirical Follow-Up,24,0.2480936840559505,0.3950923468411552,0.2874,0.07130212479768017,0.11354954048214799,0.09242583263991408,0.07130212479768017,0.0,0.09242583263991408,Sensitivity cohort (<=201712 defaults); empirical loss severity 28.74%
+36-Month Follow-Up (Empirical Cohort),Empirical Follow-Up,36,0.3554631539953884,0.44748346501652164,0.3132,0.11133105983135565,0.14015182124317457,0.1257414405372651,0.115,0.0,0.115,"Headline base cohort (<=201612 defaults); 11.50% base censor floor, 13.60% upper bound"
+Pop 1 Headline (48m Re-default Tail),Model Specification,48,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.115,0.0268,0.1418,Headline provision basis: 11.50% base + 2.68% 48m chained re-default tail = 14.18%
+Pop 1 Sensitivity (36m Re-default Tail),Model Specification,36,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.115,0.025,0.14,Sensitivity provision basis: 11.50% base + 2.50% 36m chained re-default tail = 14.00%
+Pop 1 Censor Upper Bound,Model Specification,48,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.136,0.0268,0.1628,Upper bound sensitivity: 13.60% upper base + 2.68% tail = 16.28%
+Pop 2 Base LGD (No Tail),Model Specification,36,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.115,0.0,0.115,Active modified loans: 11.50% base floor without tail to prevent double counting
+Pop 2 Upper Bound LGD,Model Specification,36,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.136,0.0,0.136,Active modified upper bound: 13.60% censor upper limit
+Pop 3 Active Default (Headline),Model Specification,48,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.1418,0.0,0.1418,Matches Pop 1 headline LGD 14.18% applied to 100% default PD
+Pop 3 Active Default (Upper Bound),Model Specification,48,0.3554631539953884,0.44748346501652164,0.3132,0.115,0.136,0.1255,0.1628,0.0,0.1628,Matches Pop 1 upper bound LGD 16.28%

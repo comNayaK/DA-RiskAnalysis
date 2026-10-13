@@ -1,0 +1,13 @@
+scenario_id,scenario_name,total_ecl,description,delta_vs_headline,pct_delta_vs_headline
+SCEN_01,Calibrated Base (No Probation),35797234.51565044,All performing loans at 0.1560% clean PD; no probation Stage 2 split,-9275989.352786027,-20.579822246266584
+SCEN_02,Uncalibrated Base (No Probation),38262035.04812091,All performing loans at uncalibrated 0.2180% current PD,-6811188.820315555,-15.111385953213881
+SCEN_03,36m Tail Sensitivity (14.00% LGD),44578548.232296,14.00% Pop 1 LGD (11.50% base + 2.50% 36m tail); 9.510% probation PD,-494675.63614046574,-1.097493353447197
+SCEN_04,"Headline Scenario (48m Tail, 14.18% LGD)",45073223.86843646,"Single headline reserve basis (14.18% Pop 1 LGD, 11.50% Pop 2 LGD, 9.510% probation PD)",0.0,0.0
+SCEN_05,"Alternative Cohort (4,606 Probation)",45649754.28704852,Extended probation cohort identification at 14.18% LGD,576530.4186120555,1.2790973645348316
+SCEN_06,Censor Upper Bound (16.28% LGD),51959042.29455739,"Upper bound censoring (16.28% Pop 1, 13.60% Pop 2 LGD)",6885818.426120929,15.276960099902857
+SCEN_07,Measured Trailing Scaling (0.9518x),43701736.65512993,Uniform scaling of non-Stage-3 ECL by measured trailing ratio 912 / 958.2 = 0.9518x,-1371487.2133065313,-3.042798130681187
+SCEN_08,Legacy Spec D Scaling (0.885x),41802048.74947788,"Legacy uniform scaling of non-Stage-3 ECL by 0.885x (912 / 1,031)",-3271175.118958585,-7.257468710263032
+SCEN_09,2019 Realized Clean PD (0.1163%),43533201.49637484,Evaluating clean history at 2019 realized default rate 0.1163% vs 0.1560% policy choice,-1540022.3720616251,-3.416712273692187
+SCEN_10,Strict Clean Only (0.1513%),44892022.52144531,"Strict Pop 1 Clean PD (313/206,839) with headline baseline parameters",-181201.34699115157,-0.4020155015315908
+SCEN_11,Measured Trailing Pop 2 + Strict Clean,44166711.20314866,All measured trailing parameters (Pop 2 and Clean) applied to portfolio,-906512.6652878001,-2.011199970815946
+SCEN_12,Measured Pooled Pop 2 + Strict Clean,45011326.703256525,Measured pooled historical parameters applied to portfolio,-61897.16517993808,-0.13732579981544865
