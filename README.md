@@ -71,7 +71,7 @@ All headline findings in the reports are strictly reproducible from committed, s
       * **201712 $\rightarrow$ 2018:** Actual = 1,011, Expected = 1,259.8 ($Z = -7.75\sigma$, Err = +19.7%) $\rightarrow$ 🔴 **FAIL**
       * **201812 $\rightarrow$ 2019:** Actual = 912, Expected = 1,124.7 ($Z = -6.92\sigma$, Err = +18.9%) $\rightarrow$ 🔴 **FAIL**
   * Evaluates Pop 1 Clean sensitivity on 201812 using long-run pooled Clean PD (0.2089% $\rightarrow$ Expected = 1,066.1, $Z = -5.14\sigma$).
-  * Produces an age-bucketed realized-rate table for Current loans across years 2015–2019, demonstrating that calendar year dominates; no age effect is detectable in this data.
+  * Produces an age-bucketed realized-rate table for Current loans across years 2015–2019, demonstrating that calendar year dominates; any age effect is small and cannot be separated from calendar effects in this data.
 
 ### 4. Vintage-Curve Denominator Integrity & 6-Month Binned Incidence
 * **Script:** `python3 scratch/reproduce_vintage_curves.py`

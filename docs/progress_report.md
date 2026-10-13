@@ -293,8 +293,8 @@ To test whether calendar year dominates or if age effects are detectable across 
 | **Aggregate Clean Rate** | **0.2091%** | **0.1633%** | **0.3004%** | **0.1513%** | **0.1163%** |
 
 **Empirical Analysis of Hypotheses (What the Table Shows):**
-1. **Calendar Year Dominates; No Age Effect Detectable in This Data:**
-   * Pop 1 Clean default rates fell across every single age bucket from 2017 to 2019 (by approximately 49%–70%), demonstrating that calendar effects dominate and no age effect is detectable in this data:
+1. **Calendar Year Dominates; Any Age Effect Is Small and Not Separable:**
+   * Pop 1 Clean default rates fell across every single age bucket from 2017 to 2019 (by approximately 49%–70%), demonstrating that calendar effects dominate and any age effect is small and cannot be separated from calendar effects in this data:
      - Loans aged 25–36m fell from 0.3716% (2017) to 0.1660% (2018) to 0.1096% (2019) (a -70.5% drop).
      - Loans aged 37–48m fell from 0.2559% (2017) to 0.1580% (2018) to 0.1249% (2019) (a -51.2% drop).
      - Loans aged 49–60m fell from 0.1952% (2017) to 0.1676% (2018) to 0.0994% (2019) (a -49.1% drop).
@@ -303,7 +303,7 @@ To test whether calendar year dominates or if age effects are detectable across 
    * The age profile is not fully flat: in 2015, default rates rise with age, from 0.1974% at 13–24 months (0.2034% at 1–12m) to 0.2604% at 49–60 months.
    * The 2017 hurricane year represents an external calendar outlier where default rates spiked across all age buckets (0.1952%–0.3725%).
    * In 2018, rates across all ages 1m to 60m were clustered tightly (0.1567% to 0.1676%), and in 2019, 85m+ loans exhibited a higher default rate (0.1451%) than loans aged 13–24m (0.1121%) or 25–36m (0.1096%).
-   * Because default rates fell uniformly across every age bucket following 2017 rather than remaining stable within buckets as loans seasoned, calendar year dominates; no age effect is detectable in this data.
+   * Because default rates fell uniformly across every age bucket following 2017 rather than remaining stable within buckets as loans seasoned, calendar year dominates; any age effect is small and cannot be separated from calendar effects in this data.
 3. **The Lagging Trailing-PD Hypothesis:**
    * A working hypothesis for multi-year forecasting failure is that relying on trailing 12-month default rates introduces a mechanical one-year phase lag.
    * When default rates experienced an acute surge in 2017 (0.3004% clean rate across the portfolio), the trailing model—parameterized on benign 2016 data (0.1633%)—severely under-predicted 2017 ($Z = +14.55\sigma$).
@@ -312,7 +312,7 @@ To test whether calendar year dominates or if age effects are detectable across 
    * Under the locked ex-ante dual tripwire standard, all four snapshots fail primarily due to state-level breaches and phase-lag overshooting.
 
 **Erratum (v0.2 Rolling Conclusions):**
-* **Age Effect vs Calendar Regime:** The v0.2 conclusion attributing the 2017–2019 default rate collapse to loan age / seasoning overstates demographic effects. Pop 1 Clean rates fall in every bucket from 2017 to 2019 (by 49%–70%), demonstrating that calendar year dominates; no age effect is detectable in this data. Furthermore, the age profile is not fully flat (in 2015, rates rise with age from 0.19% at 1–12m to 0.26% at 49–60m), and the 2017 hurricane year represents an external calendar outlier.
+* **Age Effect vs Calendar Regime:** The v0.2 conclusion attributing the 2017–2019 default rate collapse to loan age / seasoning overstates demographic effects. Pop 1 Clean rates fall in every bucket from 2017 to 2019 (by 49%–70%), demonstrating that calendar year dominates; any age effect is small and cannot be separated from calendar effects in this data. The mild 2015 age gradient (0.19% at 1–12m to 0.26% at 49–60m) and the 2019 85m+ bucket (0.145%) being above the 25–36m bucket (0.110%) are the reasons the age effect is small and not separable, rather than none (and the 2017 hurricane year represents an external calendar outlier).
 * **Spec D Backtest & Parameter Attribution:** The legacy +11.5% error ($-4.15\sigma$, $0.885\times$ scaling, $\$41.8\text{M}$) was not solely a Pop 2 artifact. While Pop 2 delinquency inputs were biased upward by selection bias, fixing them moved ECL by only ~2% (-$725k); the clean rate was also overstated. Crucially, aggregate over-prediction hinges on which Pop 1 Clean parameterization is used (long-run pooled clean averages fail in aggregate at $Z = -5.14\sigma$, whereas measured trailing averages yield an aggregate pass at $Z = -1.64\sigma$, $+4.8\%$ error). Under the plan's dual tripwire rule evaluated per state and in total, Pop 1 Clean still breaches (+23.2%, $Z = -3.90\sigma$), resulting in an official status of **aggregate pass, state-level FAIL**. The recomputed non-Stage-3 trailing scaling factor of $0.9518\times$ yields **$\$43.70\text{M}$**.
 
 ---
